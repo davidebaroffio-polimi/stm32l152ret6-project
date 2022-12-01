@@ -7,6 +7,7 @@ import psutil
 import re
 import csv
 import sys
+from elftools.elf.elffile import ELFFile
 
 class SignalHandler(object):
     def __init__(self, process):
@@ -24,10 +25,18 @@ cmd_gdb = "~/Downloads/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/gdb ~
 data = []
 scope = None
 fieldnames = ['attempt', 'stop_addr', 'stop_fn', 'delay', 'target', 'bitflip', 'code']
-begin = time.time()
+begin = None
+writable_size = 0
 
 def handler(signum, frame):
     save_data()
+
+def read_writable_address_size(elffile):
+    writable_size = 0
+    for section in ELFFile(elffile).iter_sections():
+        if section.name in ['.data', '.bss', '._user_heap_stack']:
+            writable_size = writable_size + section.header['sh_size']
+    return writable_size
 
 def save_data():
     end = time.time()
@@ -116,7 +125,7 @@ def main():
                 fn = None
                 os.kill(p_gdb.pid, signal.SIGINT)
                 print("Interrupted... ", end = "")
-                ln, debug_data = read(p_gdb, "^[a-z,A-Z,0-9, ]*\(.*\)\n$", debug=True)
+                ln, debug_data = read(p_gdb, "^[0-9a-zA-Z_ ]+\(.*\)\\n$", debug=True)
                 if ln == None:
                     print("Error detected")
                     print(debug_data)
@@ -132,8 +141,8 @@ def main():
                 if scope == "registers": # alter a register
                     register = random.randint(0, 15)
                     what_to_alter = b'$r' + str.encode(str(register))
-                else: # alter some memory area (80KB of memory, but only 9544B allocated)
-                    byte = random.randint(0, 9544) # select the byte
+                else: # alter some memory area (80KB of memory, but writable_size is allocated)
+                    byte = random.randint(0, writable_size) # select the byte
                     what_to_alter = b'*' + str.encode(hex(byte + 0x20000000))
 
                 # Select the bit to flip 
@@ -209,13 +218,30 @@ def main():
     save_data()
 
 if __name__ == "__main__":
-    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-    signal.signal(signal.SIGINT, handler)
     try:
         scope = sys.argv[1]
+        elffilename = sys.argv[2]
+    except:
+        print("Usage: python3 testing.py [registers|memory] <elf_filename>")
+        exit(0)
+
+    try:
         if not scope in ["registers", "memory"]:
             raise      
     except:
         print("ERROR - please select a valid scope:", ["registers", "memory"])
+        print("Usage: python3 testing.py [registers|memory] <elf_filename>")
         exit(0)
+
+    try:
+        with open(elffilename, 'rb') as elffile:
+            writable_size = read_writable_address_size(elffile)
+    except:
+        print("ERROR - Unable to read file", elffilename)
+        print("Usage: python3 testing.py [registers|memory] <elf_filename>")
+        exit(0)
+        
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+    signal.signal(signal.SIGINT, handler)
+    begin = time.time()
     main()
