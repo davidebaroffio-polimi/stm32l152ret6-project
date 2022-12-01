@@ -6,6 +6,7 @@ import signal
 import psutil
 import re
 import csv
+import sys
 
 class SignalHandler(object):
     def __init__(self, process):
@@ -21,6 +22,7 @@ cmd_stlink = "/opt/st/stm32cubeide_1.10.1/plugins/com.st.stm32cube.ide.mcu.exter
 cmd_gdb = "~/Downloads/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/gdb ~/Documents/tesi/FreeRTOSv202112.00/FreeRTOS/stm32l152ret6-project/out.elf"
 
 data = []
+scope = None
 fieldnames = ['attempt', 'stop_addr', 'stop_fn', 'delay', 'target', 'bitflip', 'code']
 begin = time.time()
 
@@ -31,7 +33,7 @@ def save_data():
     end = time.time()
     print("Test lasted for {:.3f} seconds".format(end-begin))
     
-    with open('faults.csv', 'w', newline='') as csvfile:
+    with open('faults_'+scope+'.csv', 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(data)
@@ -42,7 +44,7 @@ def write(process, bytestring):
     process.stdin.write(bytestring)
     process.stdin.flush()
 
-def read(process, pattern, timeout = 2.0):
+def read(process, pattern, timeout = 2.0, debug=False):
     pid = os.fork()
     if pid == 0: # timer of the process, if we take longer than timeout we send a SIGALRM to the parent
         time.sleep(timeout)
@@ -55,21 +57,30 @@ def read(process, pattern, timeout = 2.0):
         signal.signal(signal.SIGALRM, s.handle)
         expired = False
         # iterate over the stdout lines in order to find the pattern
+        if debug == True:
+            debug_data = []
         while expired == False:
             ln = process.stdout.readline()
+            if debug == True:
+                debug_data.append(ln)
             # if a pattern is found we kill the timer process and return ln
             if re.match(pattern, ln.decode('utf-8')) != None:
                 os.kill(pid, signal.SIGKILL)
+                if debug == True:
+                    return ln, debug_data
                 return ln
             expired = s.expired
         # if no pattern is found within the time limit we kill the timer and return None
         os.kill(pid, signal.SIGKILL)
+        if debug == True:
+            return None, debug_data
         return None
 
 def main():
-    #attempt = 0
-    for attempt in range(0, 1000):
-
+    faults = 0
+    attempt = 0
+    #for attempt in range(0, 1000):
+    while faults < 1000:
         pid = os.fork()
         if pid == 0:
             # Initialize stlink
@@ -77,14 +88,21 @@ def main():
             return
         else:
             p_stlink = psutil.Process(pid)
+            i = 0
             while(p_stlink.status() != psutil.STATUS_SLEEPING):
-                pass
+                time.sleep(.01)
+                i+=1
+                if i > 1000: # if after 10 seconds im still stuck there is a problem
+                    print("ST-Link doesn't start...")
+                    save_data()
             # Initialize gdb
             p_gdb = subprocess.Popen(["/bin/bash", "-c" ,cmd_gdb], shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+
             # Connect to gdb server         
             write(p_gdb, b'target remote localhost:61234\n')
 
-            write(p_gdb, b'c\n')
+            #write(p_gdb, b"b memset\n")
+            write(p_gdb, b"c\n")
             # Make sure that we are continuing before running the interrupt
             if read(p_gdb, '^.*Continuing.') != None:
                 print("Connected... ", end="")
@@ -98,34 +116,23 @@ def main():
                 fn = None
                 os.kill(p_gdb.pid, signal.SIGINT)
                 print("Interrupted... ", end = "")
-                ln = read(p_gdb, "^0x.*()\n$")
+                ln, debug_data = read(p_gdb, "^[a-z,A-Z,0-9, ]*\(.*\)\n$", debug=True)
                 if ln == None:
                     print("Error detected")
+                    print(debug_data)
                     save_data()
-                ln_array = ln.decode("utf-8").split(" ")
-                addr = ln_array[0]
-                fn = ln_array[-2]
+                else:
+                    ln_array = ln.decode("utf-8").split(" ")
+                    addr = ln_array[0]
+                    fn = ln_array[2]
                 print(ln.decode("utf-8")[:-1], end=" ")
-                
+
                 # Select what to alter  
                 what_to_alter = None
-                target = random.randint(0, 100)
-                if target < 30: # 30% chance of altering the stack
-                    # get the stack pointer 
-                    write(p_gdb, b'p $sp\n')
-                    ln = read(p_gdb, "^.*\$.*0x.*\n$")
-                    ln_array = ln.decode("utf-8").split(" ")
-                    # find the element 0x<address> in the line
-                    for elem in ln_array:
-                        if elem.startswith('0x'):
-                            pt = elem
-                    pt_num = int(pt, base=0)
-                    offset = random.randint(-target, target) # select the byte
-                    what_to_alter = b'*' + str.encode(hex(offset+pt_num))
-                if target < 50: # 50% chance of altering a register
+                if scope == "registers": # alter a register
                     register = random.randint(0, 15)
                     what_to_alter = b'$r' + str.encode(str(register))
-                else: # 50% chance of altering some memory area (80KB of memory, but only 9544B allocated)
+                else: # alter some memory area (80KB of memory, but only 9544B allocated)
                     byte = random.randint(0, 9544) # select the byte
                     what_to_alter = b'*' + str.encode(hex(byte + 0x20000000))
 
@@ -148,7 +155,6 @@ def main():
                 write(p_gdb, b'set '+ what_to_alter+ b' = ' + what_to_alter + b' + $bitflip\n')
                 write(p_gdb, b'c\n')
 
-                reached_done = False
                 ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
                 if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
                     code = -3
@@ -164,7 +170,7 @@ def main():
                         write(p_gdb, b'c\n')
                         ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
                         if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
-                            code = -2
+                            code = -3
                         else:
                             ln_array = ln.decode("utf-8").split(" ")
                             if(ln_array[-2] == "Error_Handler"):
@@ -175,35 +181,11 @@ def main():
                                 code = -2
                             elif(ln_array[-2] == "done"):
                                 code = 0
-                '''for ln in p_gdb.stdout:
-                    if re.match("^Breakpoint.*()\n$", ln.decode("utf-8")) != None:
-                        ln_array = ln.decode("utf-8").split(" ")
-                        if(ln_array[-2] == "Error_Handler"):
-                            code = 1
-                        elif(ln_array[-2] == "HardFault_Handler"):
-                            code = -1
-                        elif(ln_array[-2] == "Incorrect_Result"):
-                            code = -2
-                        elif(ln_array[-2] == "done"):
-                            write(p_gdb, b'c\n')
-                            reached_done = True
-                        break
-                if reached_done:
-                    for ln in p_gdb.stdout:
-                        if re.match("^Breakpoint.*()\n$", ln.decode("utf-8")) != None:
-                                    ln_array = ln.decode("utf-8").split(" ")
-                                    if(ln_array[-2] == "Error_Handler"):
-                                        code = 1
-                                    elif(ln_array[-2] == "HardFault_Handler"):
-                                        code = -1
-                                    elif(ln_array[-2] == "Incorrect_Result"):
-                                        code = -2
-                                    elif(ln_array[-2] == "done"):
-                                        code = 0
-                                    break'''
 
                 # Collect results
                 print("#"+str(attempt), "\tEnded with code:", code)
+                if code != 0:
+                    faults+=1
 
                 p_gdb.kill()
 
@@ -216,7 +198,7 @@ def main():
                             'code': code})
             else:
                 p_gdb.kill()
-
+            attempt += 1
             # wait for p_stlink to finish
             try:
                 p_stlink.wait()
@@ -229,4 +211,11 @@ def main():
 if __name__ == "__main__":
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
     signal.signal(signal.SIGINT, handler)
+    try:
+        scope = sys.argv[1]
+        if not scope in ["registers", "memory"]:
+            raise      
+    except:
+        print("ERROR - please select a valid scope:", ["registers", "memory"])
+        exit(0)
     main()
