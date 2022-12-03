@@ -13,21 +13,13 @@ CONFG=	 	/home/buoffio/Downloads/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64
 LD= 		-T"/home/buoffio/STM32CubeIDE/workspace_1.10.1/prova-new/STM32L152RETX_FLASH.ld"
 STARTUP= 	Core/Startup/startup_stm32l152retx.s
 
-all:
-	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 `find . -type f -iname *.c -print` $(STARTUP) -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) --specs=nosys.specs -static --specs=nano.specs -mfloat-abi=soft -mthumb -emit-llvm -S 
-#-Xclang -disable-O0-optnone
+all_nopass:
+	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 `find . -type f -iname *.c` $(STARTUP) -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) $(LD) --specs=nosys.specs -Wl,-Map="prova-new.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group -o out_nopass.elf
 
-	$(LLVMLINK) -S `find . -type f -iname "*.ll" -print` -o out.ll
-	$(OPT) -S -strip-debug out.ll -o out.ll
-	$(OPT) $(OPT_PARAMS) -S -eddi_verify out.ll -o out_new.ll
-
-	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 out_new.ll $(STARTUP) -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) $(LD) --specs=nosys.specs -Wl,-Map="prova-new.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group -o out.elf
-
-	@echo 'Finished building target: out.elf'
+	@echo 'Finished building target: out_nopass.elf'
 	@echo ' '
 
-all_new: 
-#1st pass
+all: 
 	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 `ls Core/Src/*.c` `ls FreeRTOS/Source/*.c` -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) --specs=nosys.specs -static --specs=nano.specs -mfloat-abi=soft -mthumb -emit-llvm -S -Xclang -disable-O0-optnone
 
 	$(LLVMLINK) -S `find . -type f -iname "*.ll" -print` -o out.ll
@@ -37,6 +29,8 @@ all_new:
 	$(OPT) $(OPT_PARAMS) -verify_cfg out.ll -o out.ll 
 
 	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 `find Drivers -type f -iname *.c` `find FreeRTOS/Source/portable -type f -iname *.c` out.ll $(STARTUP) -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) $(LD) --specs=nosys.specs -Wl,-Map="prova-new.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group -o out.elf
+
+	@rm *.ll
 
 	@echo 'Finished building target: out.elf'
 	@echo ' '

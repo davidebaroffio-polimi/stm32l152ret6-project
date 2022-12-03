@@ -21,9 +21,11 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "timers.h"
+#include "croutine.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "des.h"
+#include "test_queue.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -96,12 +98,20 @@ __attribute__((annotate("include"))) int main(void)
   MX_TIM6_Init();
 
   /* USER CODE BEGIN 2 */
-  BaseType_t xRet2 = xTaskCreate( vTaskCode2, "Led2", 128, NULL, tskIDLE_PRIORITY + 2 , NULL );
+  /*BaseType_t xRet2 = xTaskCreate( vTaskCode2, "Led2", 128, NULL, tskIDLE_PRIORITY + 2 , NULL );
   BaseType_t xRet1 = xTaskCreate( vTaskCode1, "Led1", 128, NULL, tskIDLE_PRIORITY + 3, NULL );
-  
   BaseType_t xRet3 = xTaskCreate( vTaskDES, "des", 128*2, NULL, tskIDLE_PRIORITY + 1, NULL );
-
   if (xRet1 == pdPASS && xRet2 == pdPASS && xRet3 == pdPASS)
+    vTaskStartScheduler();*/
+
+  // Create tasks below
+  //      | | |
+  //      V V V
+  BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
+  BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL );
+  BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
+
+  if(xRet1 == pdPASS && xRet2 == pdPASS && xRet3 == pdPASS) 
     vTaskStartScheduler();
   /* USER CODE END 2 */
 
