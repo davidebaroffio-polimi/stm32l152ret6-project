@@ -80,7 +80,7 @@ void vTaskQueueTest2( void * pvParameters ) {
         int i;
         int res = xQueueReceive(globalQueuehandle, &i, 200);
         if (i == 1 && res == pdTRUE) { // we have received the value and it is indeed 1
-            xTaskDelayUntil( &xLastWakeTime, xFrequency );
+            vTaskDelayUntil( &xLastWakeTime, xFrequency );
             done();
         }
         else {
