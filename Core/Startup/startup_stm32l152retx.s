@@ -142,8 +142,8 @@ g_pfnVectors:
   .word DebugMon_Handler
   .word 0
   .word PendSV_Handler
-  .word SysTick_Handler
-  .word WWDG_IRQHandler
+  .word SysTick_Handler 
+  .word WWDG_IRQHandler             // first_external_interrupt
   .word PVD_IRQHandler
   .word TAMPER_STAMP_IRQHandler
   .word RTC_WKUP_IRQHandler

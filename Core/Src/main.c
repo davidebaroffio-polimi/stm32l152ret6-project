@@ -24,7 +24,6 @@
 #include "croutine.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "des.h"
 #include "test_queue.h"
 /* USER CODE END Includes */
 
@@ -110,8 +109,9 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
   BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL );
   BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
+  BaseType_t xRet4 = xTaskCreate( vTaskQueueTest4, "queue4", 200, NULL, tskIDLE_PRIORITY + 2, NULL );
 
-  if(xRet1 == pdPASS && xRet2 == pdPASS && xRet3 == pdPASS) 
+  if(xRet1 == pdPASS && xRet2 == pdPASS && xRet3 == pdPASS && xRet4 == pdPASS) 
     vTaskStartScheduler();
   /* USER CODE END 2 */
 

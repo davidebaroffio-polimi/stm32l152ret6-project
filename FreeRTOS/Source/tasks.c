@@ -3033,7 +3033,7 @@ __attribute__((annotate("exclude"))) BaseType_t xTaskIncrementTick( void )
 
 __attribute__((annotate("include"))) void vTaskSwitchContext( void )
 {
-    if( uxSchedulerSuspended != ( UBaseType_t ) pdFALSE )
+    if( uxSchedulerSuspended != ( UBaseType_t ) pdFALSE ) // == pdTRUE lol
     {
         /* The scheduler is currently suspended - do not allow a context
          * switch. */

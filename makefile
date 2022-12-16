@@ -20,7 +20,7 @@ all_nopass:
 	@echo ' '
 
 all: 
-	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 `ls Core/Src/*.c` `ls FreeRTOS/Source/*.c` -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) --specs=nosys.specs -static --specs=nano.specs -mfloat-abi=soft -mthumb -emit-llvm -S -Xclang -disable-O0-optnone
+	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 `find Core/Src -type f -iname *.c` `ls FreeRTOS/Source/*.c` -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) --specs=nosys.specs -static --specs=nano.specs -mfloat-abi=soft -mthumb -emit-llvm -S -Xclang -disable-O0-optnone
 
 	$(LLVMLINK) -S `find . -type f -iname "*.ll" -print` -o out.ll
 	$(OPT) -strip-debug out.ll -o out.ll
