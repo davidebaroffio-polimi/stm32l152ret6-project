@@ -28,6 +28,8 @@ fieldnames = ['attempt', 'stop_addr', 'stop_fn', 'delay', 'target', 'bitflip', '
 begin = None
 writable_size = 0
 
+original_pid = os.getpid()
+
 def handler(signum, frame):
     save_data()
 
@@ -39,13 +41,17 @@ def read_writable_address_size(elffile):
     return writable_size
 
 def save_data():
-    end = time.time()
-    print("Test lasted for {:.3f} seconds".format(end-begin))
-    
-    with open('faults_'+scope+'.csv', 'w', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(data)
+    if os.getpid() == original_pid:   
+        end = time.time()
+        print("Test lasted for {:.3f} seconds".format(end-begin))
+
+        already_exists = os.path.exists('faults_'+scope+'.csv')
+
+        with open('faults_'+scope+'.csv', 'a', newline='') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            if already_exists == False:
+                writer.writeheader()
+            writer.writerows(data)
     exit(0)
 
 def write(process, bytestring):
@@ -117,7 +123,7 @@ def main():
                 print("Connected... ", end="")
                 
                 # Add some delay (<500ms)
-                delay = random.randint(attempt, attempt+50) / 1000
+                delay = random.randint(attempt, attempt+50) / 5000
                 time.sleep(delay)
 
                 # Interrupt the execution for the fault injection  
@@ -129,82 +135,82 @@ def main():
                 if ln == None:
                     print("Error detected")
                     print(debug_data)
-                    save_data()
+                    #save_data()
                 else:
                     ln_array = ln.decode("utf-8").split(" ")
                     addr = ln_array[0]
                     fn = ln_array[2]
-                print(ln.decode("utf-8")[:-1], end=" ")
+                    print(ln.decode("utf-8")[:-1], end=" ")
 
-                # Select what to alter  
-                what_to_alter = None
-                if scope == "registers": # alter a register
-                    register = random.randint(0, 15)
-                    what_to_alter = b'$r' + str.encode(str(register))
-                else: # alter some memory area (80KB of memory, but writable_size is allocated)
-                    byte = random.randint(0, writable_size) # select the byte
-                    what_to_alter = b'*' + str.encode(hex(byte + 0x20000000))
+                    # Select what to alter  
+                    what_to_alter = None
+                    if scope == "registers": # alter a register
+                        register = random.randint(0, 15)
+                        what_to_alter = b'$r' + str.encode(str(register))
+                    else: # alter some memory area (80KB of memory, but writable_size is allocated)
+                        byte = random.randint(0, writable_size) # select the byte
+                        what_to_alter = b'*' + str.encode(hex(byte + 0x20000000))
 
-                # Select the bit to flip 
-                bitflip = 2**(random.randint(0,7))
-                write(p_gdb, b'set $bitflip = ' + str.encode(str(bitflip)) + b'\n')
+                    # Select the bit to flip 
+                    bitflip = 2**(random.randint(0,7))
+                    write(p_gdb, b'set $bitflip = ' + str.encode(str(bitflip)) + b'\n')
 
-                # Set a breakpoint to Error_Handler => the fault has been detected
-                write(p_gdb, b'b *Error_Handler\n')
-                # Set a breakpoint to HardFault_Handler => the fault has not been detected and it broke the program
-                write(p_gdb, b'b *HardFault_Handler\n')
-                # Set a breakpoint to Incorrect_Result => the fault has not been detected and a wrong output was submitted
-                write(p_gdb, b'b *Incorrect_Result\n')
-                # Set a breakpoint to a check location => the fault didn't alter the execution
-                write(p_gdb, b'b *done\n')
+                    # Set a breakpoint to Error_Handler => the fault has been detected
+                    write(p_gdb, b'b *Error_Handler\n')
+                    # Set a breakpoint to HardFault_Handler => the fault has not been detected and it broke the program
+                    write(p_gdb, b'b *HardFault_Handler\n')
+                    # Set a breakpoint to Incorrect_Result => the fault has not been detected and a wrong output was submitted
+                    write(p_gdb, b'b *Incorrect_Result\n')
+                    # Set a breakpoint to a check location => the fault didn't alter the execution
+                    write(p_gdb, b'b *done\n')
 
-                print(what_to_alter, "=", what_to_alter, "+", bitflip, "after", delay, "seconds")
+                    print(what_to_alter, "=", what_to_alter, "+", bitflip, "after", delay, "seconds")
 
-                ### TODO change the `+` into `^`
-                write(p_gdb, b'set '+ what_to_alter+ b' = ' + what_to_alter + b' + $bitflip\n')
-                write(p_gdb, b'c\n')
+                    ### TODO change the `+` into `^`
+                    write(p_gdb, b'set '+ what_to_alter+ b' = ' + what_to_alter + b' + $bitflip\n')
+                    write(p_gdb, b'c\n')
 
-                ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
-                if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
-                    code = -3
-                else:
-                    ln_array = ln.decode("utf-8").split(" ")
-                    if(ln_array[-2] == "Error_Handler"):
-                        code = 1
-                    elif(ln_array[-2] == "HardFault_Handler"):
-                        code = -1
-                    elif(ln_array[-2] == "Incorrect_Result"):
-                        code = -2
-                    elif(ln_array[-2] == "done"):
-                        write(p_gdb, b'c\n')
-                        ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
-                        if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
-                            code = -3
-                        else:
-                            ln_array = ln.decode("utf-8").split(" ")
-                            if(ln_array[-2] == "Error_Handler"):
-                                code = 1
-                            elif(ln_array[-2] == "HardFault_Handler"):
-                                code = -1
-                            elif(ln_array[-2] == "Incorrect_Result"):
-                                code = -2
-                            elif(ln_array[-2] == "done"):
-                                code = 0
+                    ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
+                    if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
+                        code = -3
+                    else:
+                        ln_array = ln.decode("utf-8").split(" ")
+                        if(ln_array[-2] == "Error_Handler"):
+                            code = 1
+                        elif(ln_array[-2] == "HardFault_Handler"):
+                            code = -1
+                        elif(ln_array[-2] == "Incorrect_Result"):
+                            code = -2
+                        elif(ln_array[-2] == "done"):
+                            write(p_gdb, b'c\n')
+                            ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
+                            if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
+                                code = -3
+                            else:
+                                ln_array = ln.decode("utf-8").split(" ")
+                                if(ln_array[-2] == "Error_Handler"):
+                                    code = 1
+                                elif(ln_array[-2] == "HardFault_Handler"):
+                                    code = -1
+                                elif(ln_array[-2] == "Incorrect_Result"):
+                                    code = -2
+                                elif(ln_array[-2] == "done"):
+                                    code = 0
 
-                # Collect results
-                print("#"+str(attempt), "\tEnded with code:", code)
-                if code != 0:
-                    faults+=1
+                    # Collect results
+                    print("#"+str(attempt), "\tEnded with code:", code)
+                    if code != 0:
+                        faults+=1
 
-                p_gdb.kill()
+                    p_gdb.kill()
 
-                data.append({'attempt': attempt,
-                            'stop_addr': addr ,
-                            'stop_fn': fn, 
-                            'delay': delay, 
-                            'target': what_to_alter.decode("utf-8")[1:], 
-                            'bitflip': bitflip, 
-                            'code': code})
+                    data.append({'attempt': attempt,
+                                'stop_addr': addr ,
+                                'stop_fn': fn, 
+                                'delay': delay, 
+                                'target': what_to_alter.decode("utf-8")[1:], 
+                                'bitflip': bitflip, 
+                                'code': code})
             else:
                 p_gdb.kill()
             attempt += 1
