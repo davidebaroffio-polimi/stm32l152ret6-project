@@ -5,12 +5,12 @@ INC=		-ICore/Inc \
 			-IFreeRTOS/Source/include \
 			-IFreeRTOS/Source/portable/GCC/ARM_CM3
 
-CLANG= 		/home/buoffio/Downloads/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/clang
-LLVMLINK= 	/home/buoffio/Documents/cot/llvm-project-main/build/bin/llvm-link
-OPT= 		/home/buoffio/Documents/cot/llvm-project-main/build/bin/opt
-OPT_PARAMS= --enable-new-pm=0 -S -load ~/Documents/cot/llvm-project-main/build/lib/CFGVerification.so
-CONFG=	 	/home/buoffio/Downloads/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/armv7m_soft_nofp.cfg
-LD= 		-T"/home/buoffio/STM32CubeIDE/workspace_1.10.1/prova-new/STM32L152RETX_FLASH.ld"
+CLANG= 		Tools/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/clang
+LLVMLINK= 	Tools/llvm/llvm-link
+OPT= 		Tools/llvm/opt
+OPT_PARAMS= --enable-new-pm=0 -S -load Tools/llvm/CFGVerification.so
+CONFG=	 	Tools/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/armv7m_soft_nofp.cfg
+LD= 		-T"Drivers/STM32L152RETX_FLASH.ld"
 STARTUP= 	Core/Startup/startup_stm32l152retx.s
 
 all_nopass:
