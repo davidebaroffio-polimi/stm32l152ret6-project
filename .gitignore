@@ -5,3 +5,4 @@
 .vscode
 .gdb_history
 Testing/*.csv
+Tools/*

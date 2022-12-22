@@ -126,7 +126,7 @@ struct CFGVerification : public ModulePass {
               Instruction *SplitInstr = Caller->getNextNonDebugInstruction();
               BasicBlock *ParentBB =
                   Caller->getParent()->splitBasicBlockBefore(SplitInstr);
-              BasicBlock *ChildBB = &(*Fn.getBasicBlockList().begin());
+              BasicBlock *ChildBB = &Fn.front();
               BBCalls.insert(
                   std::pair<BasicBlock *, BasicBlock *>(ParentBB, ChildBB));
             }
