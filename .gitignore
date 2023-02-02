@@ -1,5 +1,4 @@
 *.ll
-*.elf
 *.bin
 *.map
 *.su
