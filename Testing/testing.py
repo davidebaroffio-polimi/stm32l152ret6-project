@@ -18,9 +18,9 @@ class SignalHandler(object):
         self.process.kill()
         self.expired = True
 
-cmd_stlink = "/opt/st/stm32cubeide_1.10.1/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.300.202203231527/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.10.1/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.301.202207041506/tools/bin -m 0 -k"
+cmd_stlink = "/opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
 
-cmd_gdb = "~/Downloads/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/gdb ~/Documents/tesi/FreeRTOSv202112.00/FreeRTOS/stm32l152ret6-project/out.elf"
+cmd_gdb = "gdb-multiarch ~/Documents/tesi/FreeRTOSv202112.00/FreeRTOS/stm32l152ret6-project/out.elf"
 
 data = []
 scope = None

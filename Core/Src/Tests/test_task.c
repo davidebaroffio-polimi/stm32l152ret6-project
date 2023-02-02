@@ -15,30 +15,32 @@ vTaskSuspend                        [x]
 vTaskResume                         [x]
 xTaskResumeFromISR                  [ ]
 xTaskAbortDelay                     [-] // INCLUDE_xTaskAbortDelay is 0
-uxTaskGetSystemState                [ ]
-vTaskGetInfo                        [ ]
-xTaskGetCurrentTaskHandle           [ ]
-xTaskGetIdleTaskHandle              [ ]
-uxTaskGetStackHighWaterMark         [ ]
+uxTaskGetSystemState                [ ]*
+vTaskGetInfo                        [ ]*
+xTaskGetCurrentTaskHandle           [ ] // INCLUDE_xTaskGetCurrentTaskHandle is 0
+xTaskGetIdleTaskHandle              [ ] // INCLUDE_xTaskGetIdleTaskHandle is 0
+uxTaskGetStackHighWaterMark         [x]
 eTaskGetState                       [x]
 pcTaskGetName                       [x]
-xTaskGetHandle                      [ ]
-xTaskGetTickCount                   [ ]
+xTaskGetHandle                      [x]
+xTaskGetTickCount                   [x] // in test_queue.c
 xTaskGetTickCountFromISR            [ ]
-xTaskGetSchedulerState              [ ]
-uxTaskGetNumberOfTasks              [ ]
-vTaskList                           [ ]
+xTaskGetSchedulerState              [x]
+uxTaskGetNumberOfTasks              [x]
+vTaskList                           [ ]*
 vTaskStartTrace                     [ ] // deprecated
 ulTaskEndTrace                      [ ] // deprecated
-vTaskGetRunTimeStats                [ ]
+vTaskGetRunTimeStats                [ ]*
 vTaskGetIdleRunTimeCounter          [ ]
-vTaskSetApplicationTaskTag          [ ]
-xTaskGetApplicationTaskTag          [ ]
-xTaskCallApplicationTaskHook        [ ]
+vTaskSetApplicationTaskTag          [ ] // not used by kernel
+xTaskGetApplicationTaskTag          [ ] // not used by kernel
+xTaskCallApplicationTaskHook        [ ] // not used by kernel
 pvTaskGetThreadLocalStoragePointer  [ ]
 vTaskSetThreadLocalStoragePointer   [ ]
 vTaskSetTimeOutState                [ ]
-xTaskCheckForTimeOut                [ ]
+xTaskCheckForTimeOut                [x] // used by queue.c
+
+(*) functions intended for debugging purposes only
  */
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -80,6 +82,23 @@ void fnTest1() {
     // resume
     vTaskResume(xHandle);
     // delete
+    vTaskDelete(xHandle);
+}
+
+void fnTest2() {
+    char * name = "createdTask\0";
+
+    int numTasks = uxTaskGetNumberOfTasks();
+    TaskHandle_t xHandle = NULL;
+    
+    xTaskCreate(vTaskUseless, name, 128, NULL, tskIDLE_PRIORITY, NULL);
+    if (uxTaskGetNumberOfTasks() != numTasks +1 || 
+        xTaskGetHandle(name) != xHandle || 
+        xTaskGetSchedulerState() != taskSCHEDULER_RUNNING ||
+        uxTaskGetStackHighWaterMark(xHandle) <= 0) {
+        Incorrect_Result();
+    }
+    
     vTaskDelete(xHandle);
 }
 

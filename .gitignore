@@ -1,8 +1,9 @@
 *.ll
 *.elf
+*.bin
 *.map
 *.su
 .vscode
 .gdb_history
-Testing/*.csv
+*.csv
 Tools/*

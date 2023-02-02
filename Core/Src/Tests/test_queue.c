@@ -33,6 +33,7 @@ xQueueOverwriteFromISR         [ ]
 #include "queue.h"
 #include "main.h"
 #include "test.h"
+#include <string.h>
 
 #define QUEUE_LENGTH    10
 #define ITEM_SIZE       sizeof( uint64_t )

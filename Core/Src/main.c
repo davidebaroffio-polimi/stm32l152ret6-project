@@ -26,6 +26,7 @@
 /* USER CODE BEGIN Includes */
 #include "test_queue.h"
 #include "test_task.h"
+#include "test_misc.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -112,8 +113,10 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
   BaseType_t xRet4 = xTaskCreate( vTaskQueueTest4, "queue4", 200, NULL, tskIDLE_PRIORITY + 2, NULL ); 
   BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 200, NULL, tskIDLE_PRIORITY + 5, NULL );
+  BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 200, NULL, tskIDLE_PRIORITY+7, NULL);
+  BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 200, NULL, tskIDLE_PRIORITY+6, NULL);
 
-  if(xRet1 == pdPASS && xRet2 == pdPASS && xRet3 == pdPASS && xRet4 == pdPASS && xRet5 == pdPASS) 
+  if(/* xRet1 & xRet2 &  */xRet3 & xRet4 & xRet5 & xRet6 & xRet7 == pdPASS) 
     vTaskStartScheduler();
   /* USER CODE END 2 */
 
@@ -366,6 +369,28 @@ __attribute__((annotate("task"))) void vTaskDES( void * pvParameters )
   * @retval None
   */
 __attribute__((annotate("exclude"))) void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+
+__attribute__((annotate("exclude"))) void DataCorruption_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+
+__attribute__((annotate("exclude"))) void SigMismatch_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */

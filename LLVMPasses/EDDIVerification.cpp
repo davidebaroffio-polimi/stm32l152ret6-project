@@ -94,46 +94,48 @@ struct EDDIVerification : public ModulePass {
       else if (isa<StoreInst>(I)) {
         LLVM_DEBUG(dbgs() << "Working on store instruction: " << I << "\n");
         I.getParent()->splitBasicBlockBefore(&I);
-        Instruction *Operand = cast<Instruction>(I.getOperand(0));
-        auto Duplicate = DuplicatedInstructionMap.find(Operand);
-        // if the operand has not been duplicated we need to duplicate it
-        if (!isValueDuplicated(DuplicatedInstructionMap, *Operand)) {
-          duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
-          Duplicate = DuplicatedInstructionMap.find(Operand);
-        }
-        // if the operand has been duplicated we add the consistency check
-        if (Duplicate != DuplicatedInstructionMap.end()) {
-          Instruction *Original = Duplicate->first;
-          Instruction *Copy = Duplicate->second;
-
-          BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
-          //I.getParent()->replaceAllUsesWith(VerificationBB); // put all outgoing branches from the original branch to the clone
-          I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
-          IRBuilder<> B(VerificationBB);
-
-          Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
-          B.CreateCondBr(Cond, I.getParent(), &ErrBB);
-        }
-        // duplicate the store
-        LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
-        Instruction *IClone = I.clone();
-        IClone->insertAfter(&I);
-        DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
-        // get the operand's duplicate, if they exist
-        int J = 0;
-        for (auto Op : I.operand_values()) {
-          if (isa<Instruction>(Op)) {
-            Duplicate = DuplicatedInstructionMap.find(cast<Instruction>(Op));
-            if (Duplicate != DuplicatedInstructionMap.end()) {
-              IClone->setOperand(J, Duplicate->second);
-            }
+        if (isa<Instruction>(I.getOperand(0))) {
+          Instruction *Operand = cast<Instruction>(I.getOperand(0));
+          auto Duplicate = DuplicatedInstructionMap.find(Operand);
+          // if the operand has not been duplicated we need to duplicate it
+          if (!isValueDuplicated(DuplicatedInstructionMap, *Operand)) {
+            duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
+            Duplicate = DuplicatedInstructionMap.find(Operand);
           }
-          J++;
-        }
-        // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
-        if (IClone->isIdenticalTo(&I)) {
-          IClone->eraseFromParent();
-          DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
+          // if the operand has been duplicated we add the consistency check
+          if (Duplicate != DuplicatedInstructionMap.end()) {
+            Instruction *Original = Duplicate->first;
+            Instruction *Copy = Duplicate->second;
+
+            BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
+            //I.getParent()->replaceAllUsesWith(VerificationBB); // put all outgoing branches from the original branch to the clone
+            I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
+            IRBuilder<> B(VerificationBB);
+
+            Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
+            B.CreateCondBr(Cond, I.getParent(), &ErrBB);
+          }
+          // duplicate the store
+          LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
+          Instruction *IClone = I.clone();
+          IClone->insertAfter(&I);
+          DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
+          // get the operand's duplicate, if they exist
+          int J = 0;
+          for (auto Op : I.operand_values()) {
+            if (isa<Instruction>(Op)) {
+              Duplicate = DuplicatedInstructionMap.find(cast<Instruction>(Op));
+              if (Duplicate != DuplicatedInstructionMap.end()) {
+                IClone->setOperand(J, Duplicate->second);
+              }
+            }
+            J++;
+          }
+          // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
+          if (IClone->isIdenticalTo(&I)) {
+            IClone->eraseFromParent();
+            DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
+          }
         }
       }
       else if(isa<BranchInst, SwitchInst, ReturnInst, CallBase>(I)) {

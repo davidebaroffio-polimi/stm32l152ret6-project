@@ -43,7 +43,7 @@ struct CFGVerification : public ModulePass {
                             dyn_cast<ConstantDataArray>(GAnn->getOperand(0))) {
                       // we have the annotation!
                       StringRef AS = A->getAsString();
-                      errs() << "Annotation found: " << AS << "\n";
+                      //errs() << "Annotation found: " << AS << "\n";
                       FuncAnnotations.insert(std::pair<Function*, StringRef>(AnnotatedFunction, AS));                      // if the function is new, add it to the annotated functions
                     }
                   }
@@ -53,6 +53,17 @@ struct CFGVerification : public ModulePass {
           }
         }
       }
+    }
+
+    void persist_compiled_functions(Module &Md, std::map<Function*, StringRef> &FuncAnnotations) {
+      std::ofstream file;
+      file.open("compiled_functions.csv", ios::app);
+      for (Function &Fn : Md) {
+        if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
+          file << Fn.getName() << "\n";
+        }
+      }
+      file.close();
     }
 
     /**
@@ -503,6 +514,8 @@ struct CFGVerification : public ModulePass {
 
       // reorder the basic blocks, fixing predecessors and successors.
       sortBasicBlocks(BBSigs, NewBBs);
+
+      persist_compiled_functions(Md, FuncAnnotations);
       return true;
     }
 };

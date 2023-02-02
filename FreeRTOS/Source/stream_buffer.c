@@ -232,7 +232,7 @@ static void prvInitialiseNewStreamBuffer( StreamBuffer_t * const pxStreamBuffer,
 
 #if ( configSUPPORT_DYNAMIC_ALLOCATION == 1 )
 
-    StreamBufferHandle_t xStreamBufferGenericCreate( size_t xBufferSizeBytes,
+    __attribute__((annotate("exclude"))) StreamBufferHandle_t xStreamBufferGenericCreate( size_t xBufferSizeBytes,
                                                      size_t xTriggerLevelBytes,
                                                      BaseType_t xIsMessageBuffer )
     {
