@@ -115,8 +115,10 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 200, NULL, tskIDLE_PRIORITY + 5, NULL );
   BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 200, NULL, tskIDLE_PRIORITY+7, NULL);
   BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 200, NULL, tskIDLE_PRIORITY+6, NULL);
+  BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer1", 200, NULL, tskIDLE_PRIORITY+8, NULL);
 
-  if(/* xRet1 & xRet2 &  */xRet3 & xRet4 & xRet5 & xRet6 & xRet7 == pdPASS) 
+
+  if(xRet1 & xRet2 & xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8 == pdPASS) 
     vTaskStartScheduler();
   /* USER CODE END 2 */
 

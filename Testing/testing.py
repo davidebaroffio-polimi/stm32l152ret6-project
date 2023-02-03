@@ -156,7 +156,9 @@ def main():
                     write(p_gdb, b'set $bitflip = ' + str.encode(str(bitflip)) + b'\n')
 
                     # Set a breakpoint to Error_Handler => the fault has been detected
-                    write(p_gdb, b'b *Error_Handler\n')
+                    write(p_gdb, b'b *DataCorruption_Handler\n')
+                    # Set a breakpoint to Error_Handler => the fault has been detected
+                    write(p_gdb, b'b *SigMismatch_Handler\n')
                     # Set a breakpoint to HardFault_Handler => the fault has not been detected and it broke the program
                     write(p_gdb, b'b *HardFault_Handler\n')
                     # Set a breakpoint to Incorrect_Result => the fault has not been detected and a wrong output was submitted
@@ -175,8 +177,10 @@ def main():
                         code = -3
                     else:
                         ln_array = ln.decode("utf-8").split(" ")
-                        if(ln_array[-2] == "Error_Handler"):
+                        if(ln_array[-2] == "DataCorruption_Handler"):
                             code = 1
+                        elif(ln_array[-2] == "SigMismatch_Handler"):
+                            code = 2
                         elif(ln_array[-2] == "HardFault_Handler"):
                             code = -1
                         elif(ln_array[-2] == "Incorrect_Result"):
@@ -188,8 +192,10 @@ def main():
                                 code = -3
                             else:
                                 ln_array = ln.decode("utf-8").split(" ")
-                                if(ln_array[-2] == "Error_Handler"):
+                                if(ln_array[-2] == "DataCorruption_Handler"):
                                     code = 1
+                                elif(ln_array[-2] == "SigMismatch_Handler"):
+                                    code = 2
                                 elif(ln_array[-2] == "HardFault_Handler"):
                                     code = -1
                                 elif(ln_array[-2] == "Incorrect_Result"):

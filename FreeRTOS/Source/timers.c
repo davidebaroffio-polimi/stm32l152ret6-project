@@ -397,7 +397,7 @@
     }
 /*-----------------------------------------------------------*/
 
-    BaseType_t xTimerGenericCommand( TimerHandle_t xTimer,
+    __attribute__((annotate("exclude"))) BaseType_t xTimerGenericCommand( TimerHandle_t xTimer,
                                      const BaseType_t xCommandID,
                                      const TickType_t xOptionalValue,
                                      BaseType_t * const pxHigherPriorityTaskWoken,
@@ -574,7 +574,7 @@
     }
 /*-----------------------------------------------------------*/
 
-    static portTASK_FUNCTION( prvTimerTask, pvParameters )
+    __attribute__((annotate("exclude"))) static portTASK_FUNCTION( prvTimerTask, pvParameters )
     {
         TickType_t xNextExpireTime;
         BaseType_t xListWasEmpty;
@@ -766,7 +766,7 @@
     }
 /*-----------------------------------------------------------*/
 
-    static void prvProcessReceivedCommands( void )
+    __attribute__((annotate("exclude"))) static void prvProcessReceivedCommands( void )
     {
         DaemonTaskMessage_t xMessage;
         Timer_t * pxTimer;
