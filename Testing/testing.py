@@ -18,9 +18,9 @@ class SignalHandler(object):
         self.process.kill()
         self.expired = True
 
-cmd_stlink = "/opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
+cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
 
-cmd_gdb = "gdb-multiarch ~/Documents/tesi/FreeRTOSv202112.00/FreeRTOS/stm32l152ret6-project/out.elf"
+cmd_gdb = "gdb-multiarch"
 
 data = []
 scope = None
@@ -41,7 +41,7 @@ def read_writable_address_size(elffile):
     return writable_size
 
 def save_data():
-    if os.getpid() == original_pid:   
+    if os.getpid() == original_pid:
         end = time.time()
         print("Test lasted for {:.3f} seconds".format(end-begin))
 
@@ -111,7 +111,7 @@ def main():
                     print("ST-Link doesn't start...")
                     save_data()
             # Initialize gdb
-            p_gdb = subprocess.Popen(["/bin/bash", "-c" ,cmd_gdb], shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p_gdb = subprocess.Popen(["/bin/bash", "-c" ,cmd_gdb+' '+sys.argv[2]], shell=False, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
 
             # Connect to gdb server         
             write(p_gdb, b'target remote localhost:61234\n')
@@ -123,7 +123,7 @@ def main():
                 print("Connected... ", end="")
                 
                 # Add some delay (<500ms)
-                delay = random.randint(attempt, attempt+50) / 5000
+                delay = (random.randint(attempt, attempt+50) / 5000) % 3000
                 time.sleep(delay)
 
                 # Interrupt the execution for the fault injection  

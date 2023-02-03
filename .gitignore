@@ -4,5 +4,4 @@
 *.su
 .vscode
 .gdb_history
-*.csv
 Tools/*
