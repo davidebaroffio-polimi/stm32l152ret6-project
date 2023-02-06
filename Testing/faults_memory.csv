@@ -29896,3 +29896,7 @@ attempt,stop_addr,stop_fn,delay,target,bitflip,code
 7035,0x0800f1ea,prvIdleTask,1.4166,0x2000102b,1,0
 7036,0x0800f312,prvCheckTasksWaitingTermination,1.4166,0x2000a829,64,0
 7037,0x080031ec,vListInsert,1.413,0x2000ae75,2,0
+0,0x0801a8a2,Reset_Handler,0.003,0x2000a53a,16,0
+1,0x0801a8a4,Reset_Handler,0.0022,0x2000b344,32,0
+2,0x0801a8a4,Reset_Handler,0.007,0x20004b84,16,0
+3,0x0801a8a2,Reset_Handler,0.006,0x2000a486,64,0
