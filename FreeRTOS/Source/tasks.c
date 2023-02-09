@@ -3676,7 +3676,7 @@ __attribute__((annotate("include"))) static portTASK_FUNCTION( prvIdleTask, pvPa
 #endif /* portUSING_MPU_WRAPPERS */
 /*-----------------------------------------------------------*/
 
-__attribute__((annotate("include"))) static void prvInitialiseTaskLists( void )
+__attribute__((annotate("exclude"))) static void prvInitialiseTaskLists( void )
 {
     UBaseType_t uxPriority;
 

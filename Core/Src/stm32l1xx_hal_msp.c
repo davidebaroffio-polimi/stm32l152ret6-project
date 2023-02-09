@@ -86,7 +86,7 @@ __attribute__((annotate("exclude"))) void HAL_MspInit(void)
 * @param huart: UART handle pointer
 * @retval None
 */
-__attribute__((annotate("include"))) void HAL_UART_MspInit(UART_HandleTypeDef* huart)
+__attribute__((annotate("exclude"))) void HAL_UART_MspInit(UART_HandleTypeDef* huart)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   if(huart->Instance==USART2)

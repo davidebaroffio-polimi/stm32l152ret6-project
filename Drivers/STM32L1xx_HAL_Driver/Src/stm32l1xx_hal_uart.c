@@ -348,7 +348,7 @@ static void UART_SetConfig(UART_HandleTypeDef *huart);
   *                the configuration information for the specified UART module.
   * @retval HAL status
   */
-HAL_StatusTypeDef HAL_UART_Init(UART_HandleTypeDef *huart)
+__attribute__((annotate("exclude"))) HAL_StatusTypeDef HAL_UART_Init(UART_HandleTypeDef *huart)
 {
   /* Check the UART handle allocation */
   if (huart == NULL)
@@ -699,7 +699,7 @@ HAL_StatusTypeDef HAL_UART_DeInit(UART_HandleTypeDef *huart)
   *                the configuration information for the specified UART module.
   * @retval None
   */
-__weak void HAL_UART_MspInit(UART_HandleTypeDef *huart)
+__attribute__((annotate("exclude"))) __weak void HAL_UART_MspInit(UART_HandleTypeDef *huart)
 {
   /* Prevent unused argument(s) compilation warning */
   UNUSED(huart);

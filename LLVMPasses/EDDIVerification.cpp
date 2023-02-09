@@ -62,10 +62,10 @@ struct EDDIVerification : public ModulePass {
       // if the instruction is an alloca instruction we need to duplicate it
       if (isa<AllocaInst>(I)) {
         // Do nothing lol
-        /*LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
+        LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
         Instruction *IClone = I.clone();
         IClone->insertAfter(&I);
-        DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));*/
+        DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
       }
       // if the instruction is a binary/unary instruction we need to duplicate it checking for its operands
       else if (isa<BinaryOperator, UnaryInstruction, LoadInst, GetElementPtrInst, CmpInst, PHINode>(I)) {

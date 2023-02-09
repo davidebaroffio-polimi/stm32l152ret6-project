@@ -109,16 +109,16 @@ __attribute__((annotate("include"))) int main(void)
   //      | | |
   //      V V V
   BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
-  BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL );
+  BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL ); 
   BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
-  BaseType_t xRet4 = xTaskCreate( vTaskQueueTest4, "queue4", 200, NULL, tskIDLE_PRIORITY + 2, NULL ); 
+  BaseType_t xRet4 = xTaskCreate( vTaskQueueTest4, "queue4", 200, NULL, tskIDLE_PRIORITY + 2, NULL );
   BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 200, NULL, tskIDLE_PRIORITY + 5, NULL );
   BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 200, NULL, tskIDLE_PRIORITY+7, NULL);
   BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 200, NULL, tskIDLE_PRIORITY+6, NULL);
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer1", 200, NULL, tskIDLE_PRIORITY+8, NULL);
 
 
-  if(xRet1 & xRet2 & xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8 == pdPASS) 
+  if(xRet1 & xRet2 &  xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS) 
     vTaskStartScheduler();
   /* USER CODE END 2 */
 
@@ -138,7 +138,7 @@ __attribute__((annotate("include"))) int main(void)
   * @brief System Clock Configuration
   * @retval None
   */
-__attribute__((annotate("include"))) void SystemClock_Config(void)
+__attribute__((annotate("exclude"))) void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
@@ -182,7 +182,7 @@ __attribute__((annotate("include"))) void SystemClock_Config(void)
   * @param None
   * @retval None
   */
-__attribute__((annotate("include"))) static void MX_USART2_UART_Init(void)
+__attribute__((annotate("exclude"))) static void MX_USART2_UART_Init(void)
 {
 
   /* USER CODE BEGIN USART2_Init 0 */
@@ -215,7 +215,7 @@ __attribute__((annotate("include"))) static void MX_USART2_UART_Init(void)
   * @param None
   * @retval None
   */
-__attribute__((annotate("include"))) static void MX_GPIO_Init(void)
+__attribute__((annotate("exclude"))) static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
@@ -248,7 +248,7 @@ __attribute__((annotate("include"))) static void MX_GPIO_Init(void)
   * @param None
   * @retval None
   */
-__attribute__((annotate("include"))) static void MX_TIM6_Init(void)
+__attribute__((annotate("exclude"))) static void MX_TIM6_Init(void)
 {
 
   /* USER CODE BEGIN TIM6_Init 0 */

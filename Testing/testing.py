@@ -95,7 +95,7 @@ def main():
     faults = 0
     attempt = 0
     #for attempt in range(0, 1000):
-    while faults < 1000:
+    while True:
         pid = os.fork()
         if pid == 0:
             # Initialize stlink
