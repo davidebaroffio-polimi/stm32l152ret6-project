@@ -9,6 +9,10 @@
 #include "llvm/Support/raw_ostream.h"
 #include <map>
 #include <list>
+#include <unordered_set>
+#include <queue>
+#include <iostream>
+#include <fstream>
 using namespace llvm;
 
 #define DEBUG_TYPE "eddi_verification"
@@ -58,6 +62,52 @@ struct EDDIVerification : public ModulePass {
       }
     }
 
+    /**
+     * @param I is the operand that we want to check whether is used by store
+     * @param Use is the instruction that has I as operand
+    */
+    int is_used_by_store(Instruction &I, Instruction &Use) {
+      BasicBlock *BB = I.getParent();
+      /* get I users and check whether the BB of I is in the successors of the user */
+      for (User *U : I.users()) {
+        if (isa<StoreInst>(U) && U != &Use) {
+          Instruction *U_st = cast<StoreInst>(U);
+          // find BB in U_st successors
+          std::unordered_set<BasicBlock *> reachable;
+          std::queue<BasicBlock *> worklist;
+          worklist.push(U_st->getParent());
+          while (!worklist.empty()) {
+            BasicBlock *front = worklist.front();
+            if (front == BB) return 1;
+            worklist.pop();
+            for (BasicBlock *succ : successors(front)) {
+              if (reachable.count(succ) == 0) {
+                /// We need the check here to ensure that we don't run 
+                /// infinitely if the CFG has a loop in it
+                /// i.e. the BB reaches itself directly or indirectly
+                worklist.push(succ);
+                reachable.insert(succ);
+              }
+            }
+          }
+        }
+      }
+      return 0;
+    }
+
+    void persist_compiled_functions(Module &Md, std::map<Function*, StringRef> &FuncAnnotations) {
+      std::ofstream file;
+      //llvm::raw_fd_ostream file("compiled_functions.csv", std::error_code(), llvm::sys::fs::OF_Append); // CHECK IF THIS WORK
+      file.open("compiled_eddi_functions.csv");
+      file << "fn_name\n";
+      for (Function &Fn : Md) {
+        if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
+          file << Fn.getName().str() << "\n";
+        }
+      }
+      file.close();
+    }
+
     void duplicateInstruction(Instruction &I, std::map<Instruction *, Instruction *> &DuplicatedInstructionMap, BasicBlock &ErrBB) {
       // if the instruction is an alloca instruction we need to duplicate it
       if (isa<AllocaInst>(I)) {
@@ -94,48 +144,73 @@ struct EDDIVerification : public ModulePass {
       else if (isa<StoreInst>(I)) {
         LLVM_DEBUG(dbgs() << "Working on store instruction: " << I << "\n");
         I.getParent()->splitBasicBlockBefore(&I);
-        if (isa<Instruction>(I.getOperand(0))) {
-          Instruction *Operand = cast<Instruction>(I.getOperand(0));
-          auto Duplicate = DuplicatedInstructionMap.find(Operand);
-          // if the operand has not been duplicated we need to duplicate it
-          if (!isValueDuplicated(DuplicatedInstructionMap, *Operand)) {
-            duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
-            Duplicate = DuplicatedInstructionMap.find(Operand);
+        Instruction *Operand = cast<Instruction>(I.getOperand(0));
+        auto Duplicate = DuplicatedInstructionMap.find(Operand);
+        // if the operand has not been duplicated we need to duplicate it
+        if (!isValueDuplicated(DuplicatedInstructionMap, *Operand)) {
+          duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
+          Duplicate = DuplicatedInstructionMap.find(Operand);
+        }
+        // if the operand has been duplicated we add the consistency check
+        if (Duplicate != DuplicatedInstructionMap.end()) {
+          Instruction *Original = Duplicate->first;
+          Instruction *Copy = Duplicate->second;
+
+          BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
+          //I.getParent()->replaceAllUsesWith(VerificationBB); // put all outgoing branches from the original branch to the clone
+          I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
+          IRBuilder<> B(VerificationBB);
+
+          // check whether the duplicated instruction is a pointer and eventually add the compare between their pointed value
+          if (Original->getType()->isPointerTy()) {
+            int isUsedByStore = 0;
+            for (User *U : Original->users()) {
+              if (isa<StoreInst>(U) && U != Operand) {
+                isUsedByStore = 1;
+                break;
+              }
+            }
+            if (is_used_by_store(*Operand, *Original)) {
+              Original = B.CreateLoad(Original->getType(), Original);
+              Copy = B.CreateLoad(Copy->getType(), Copy);
+              Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
+              B.CreateCondBr(Cond, I.getParent(), &ErrBB);
+            }
+            else {
+              B.CreateBr(I.getParent());
+            }
+/* 
+            IRBuilder<> B1(I.getParent());
+            B1.SetInsertPoint(I.getNextNonDebugInstruction());
+            auto *TmpLoad = B1.CreateLoad(Original->getType(), Original);
+            auto *TmpStore = B1.CreateStore(TmpLoad, Copy); */
+            //DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpLoad, TmpStore));
           }
-          // if the operand has been duplicated we add the consistency check
-          if (Duplicate != DuplicatedInstructionMap.end()) {
-            Instruction *Original = Duplicate->first;
-            Instruction *Copy = Duplicate->second;
-
-            BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
-            //I.getParent()->replaceAllUsesWith(VerificationBB); // put all outgoing branches from the original branch to the clone
-            I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
-            IRBuilder<> B(VerificationBB);
-
+          else {
             Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
             B.CreateCondBr(Cond, I.getParent(), &ErrBB);
           }
-          // duplicate the store
-          LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
-          Instruction *IClone = I.clone();
-          IClone->insertAfter(&I);
-          DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
-          // get the operand's duplicate, if they exist
-          int J = 0;
-          for (auto Op : I.operand_values()) {
-            if (isa<Instruction>(Op)) {
-              Duplicate = DuplicatedInstructionMap.find(cast<Instruction>(Op));
-              if (Duplicate != DuplicatedInstructionMap.end()) {
-                IClone->setOperand(J, Duplicate->second);
-              }
+        }
+        // duplicate the store
+        LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
+        Instruction *IClone = I.clone();
+        IClone->insertAfter(&I);
+        DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
+        // get the operand's duplicate, if they exist
+        int J = 0;
+        for (auto Op : I.operand_values()) {
+          if (isa<Instruction>(Op)) {
+            Duplicate = DuplicatedInstructionMap.find(cast<Instruction>(Op));
+            if (Duplicate != DuplicatedInstructionMap.end()) {
+              IClone->setOperand(J, Duplicate->second);
             }
-            J++;
           }
-          // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
-          if (IClone->isIdenticalTo(&I)) {
-            IClone->eraseFromParent();
-            DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
-          }
+          J++;
+        }
+        // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
+        if (IClone->isIdenticalTo(&I)) {
+          IClone->eraseFromParent();
+          DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
         }
       }
       else if(isa<BranchInst, SwitchInst, ReturnInst, CallBase>(I)) {
@@ -156,13 +231,40 @@ struct EDDIVerification : public ModulePass {
               Instruction *Original = Duplicate->first;
               Instruction *Copy = Duplicate->second;
 
-              BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
-              //I.getParent()->replaceAllUsesWith(VerificationBB);
-              I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
-              IRBuilder<> B(VerificationBB);
-
-              Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
-              B.CreateCondBr(Cond, I.getParent(), &ErrBB);
+              // check whether the duplicated instruction is a pointer and eventually add the compare between their pointed value
+              if (Original->getType()->isPointerTy()) {
+                int isUsedByStore = 0;
+                for (User *U : Original->users()) {
+                  if (isa<StoreInst>(U) && U != V) {
+                    isUsedByStore = 1;
+                    break;
+                  }
+                }
+                if (is_used_by_store(*Operand, *Original)) {
+                  BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
+                  I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
+                  IRBuilder<> B(VerificationBB);
+                  auto *LOriginal = B.CreateLoad(Original->getType(), Original);
+                  auto *LCopy = B.CreateLoad(Copy->getType(), Copy);
+                  Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, LOriginal, LCopy);
+                  B.CreateCondBr(Cond, I.getParent(), &ErrBB);
+                }
+                if (isa<CallBase>(I)) { // add instructions at the end to account for function modifications
+                  IRBuilder<> B1(I.getParent());
+                  B1.SetInsertPoint(I.getNextNode());
+                  Instruction *TmpLoad = B1.CreateLoad(Original->getType(), Original);
+                  Instruction *TmpStore = B1.CreateStore(TmpLoad, Copy);
+                  DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpLoad, TmpLoad));
+                  DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpStore, TmpStore));
+                }
+              }
+              else {
+                BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
+                I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
+                IRBuilder<> B(VerificationBB);
+                Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
+                B.CreateCondBr(Cond, I.getParent(), &ErrBB);
+              }
             }
           }
         }
@@ -205,7 +307,7 @@ struct EDDIVerification : public ModulePass {
           }
           IRBuilder<> ErrB(ErrBB);
           auto CalleeF = ErrBB->getModule()->getOrInsertFunction(
-              "Error_Handler", FunctionType::getVoidTy(Md.getContext()));
+              "DataCorruption_Handler", FunctionType::getVoidTy(Md.getContext()));
           ErrB.CreateCall(CalleeF)->setDebugLoc(ErrB.getCurrentDebugLocation());
           ErrB.CreateBr(ErrBB);
         }
@@ -214,6 +316,8 @@ struct EDDIVerification : public ModulePass {
         }
       }
       //errs() << Md;
+
+      persist_compiled_functions(Md, FuncAnnotations);
       return true;
     }
 };

@@ -8,6 +8,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include <list>
 #include <map>
+#include <iostream>
+#include <fstream>
 using namespace llvm;
 
 #define DEBUG_TYPE "cfg_verification"
@@ -57,10 +59,12 @@ struct CFGVerification : public ModulePass {
 
     void persist_compiled_functions(Module &Md, std::map<Function*, StringRef> &FuncAnnotations) {
       std::ofstream file;
-      file.open("compiled_functions.csv", ios::app);
+      //llvm::raw_fd_ostream file("compiled_functions.csv", std::error_code(), llvm::sys::fs::OF_Append); // CHECK IF THIS WORK
+      file.open("compiled_cfgv_functions.csv");
+      file << "fn_name\n";
       for (Function &Fn : Md) {
         if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
-          file << Fn.getName() << "\n";
+          file << Fn.getName().str() << "\n";
         }
       }
       file.close();
@@ -506,7 +510,7 @@ struct CFGVerification : public ModulePass {
           }
           IRBuilder<> ErrB(ErrBB);
           auto CalleeF = ErrBB->getModule()->getOrInsertFunction(
-              "Error_Handler", FunctionType::getVoidTy(Md.getContext()));
+              "SigMismatch_Handler", FunctionType::getVoidTy(Md.getContext()));
           ErrB.CreateCall(CalleeF)->setDebugLoc(ErrB.getCurrentDebugLocation());
           ErrB.CreateBr(ErrBB);
         }

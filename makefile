@@ -24,6 +24,7 @@ all:
 
 	$(LLVMLINK) -S `find . -type f -iname "*.ll" -print` -o out.ll
 	$(OPT) -strip-debug out.ll -o out.ll
+	$(OPT) $(OPT_PARAMS) -func_ret_to_ref out.ll -o out.ll
 	$(OPT) $(OPT_PARAMS) -eddi_verify out.ll -o out.ll
 	$(OPT) -passes=simplifycfg out.ll -o out.ll -S
 	$(OPT) $(OPT_PARAMS) -verify_cfg out.ll -o out.ll 

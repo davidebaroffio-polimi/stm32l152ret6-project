@@ -166,10 +166,10 @@ def main():
                     # Set a breakpoint to a check location => the fault didn't alter the execution
                     write(p_gdb, b'b *done\n')
 
-                    print(what_to_alter, "=", what_to_alter, "+", bitflip, "after", delay, "seconds")
+                    print(what_to_alter, "=", what_to_alter, "^", bitflip, "after", delay, "seconds")
 
                     ### TODO change the `+` into `^`
-                    write(p_gdb, b'set '+ what_to_alter+ b' = ' + what_to_alter + b' + $bitflip\n')
+                    write(p_gdb, b'set '+ what_to_alter+ b' = ' + what_to_alter + b' ^ $bitflip\n')
                     write(p_gdb, b'c\n')
 
                     ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
