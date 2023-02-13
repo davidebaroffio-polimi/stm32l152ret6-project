@@ -7,6 +7,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 #include <map>
 #include <list>
 #include <unordered_set>
@@ -108,170 +109,283 @@ struct EDDIVerification : public ModulePass {
       file.close();
     }
 
-    void duplicateInstruction(Instruction &I, std::map<Instruction *, Instruction *> &DuplicatedInstructionMap, BasicBlock &ErrBB) {
-      // if the instruction is an alloca instruction we need to duplicate it
-      if (isa<AllocaInst>(I)) {
-        // Do nothing lol
-        LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
-        Instruction *IClone = I.clone();
-        IClone->insertAfter(&I);
-        DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
-      }
-      // if the instruction is a binary/unary instruction we need to duplicate it checking for its operands
-      else if (isa<BinaryOperator, UnaryInstruction, LoadInst, GetElementPtrInst, CmpInst, PHINode>(I)) {
-        LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
-        Instruction *IClone = I.clone();
-        IClone->insertAfter(&I);
-        DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
-        int J = 0;
-        // iterate over the operands and switch them with their duplicates in the duplicated instructions
-        for (Value *V : I.operand_values()) {
-          LLVM_DEBUG(dbgs() << "Found operand: " << V << "\n\tisa<Instruction>: " << isa<Instruction>(V) << "\n");
-          if (isa<Instruction>(V)) { // if V is coming from an instruction we need to duplicate it
-            Instruction *Operand = cast<Instruction>(V);
-            // if the operand has not been duplicated we need to duplicate it
-            if (!isValueDuplicated(DuplicatedInstructionMap, *Operand)) {
-              duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
-            }
-            auto Duplicate = DuplicatedInstructionMap.find(Operand);
-            if (Duplicate != DuplicatedInstructionMap.end())
-              IClone->setOperand(J, Duplicate->second); // set the J-th operand with the duplicate value
-          }
-          J++;
+    /**
+     * Clones instruction `I` and adds the pair <I, IClone> to DuplicatedInstructionMap
+    */
+    Instruction* cloneInstr(Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap) {
+      Instruction *IClone = I.clone();
+      IClone->insertAfter(&I);
+      DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
+      return IClone;
+    }
+
+    /**
+     * Takes instruction I and duplicates its operands. Then substitutes each duplicated operand in the duplicated
+     * instruction IClone.
+     * 
+     * @param DuplicatedInstructionMap is the map of duplicated instructions, needed for the recursive duplicateInstruction call
+     * @param ErrBB is the error basic block to jump to in case of error needed for the recursive duplicateInstruction call 
+    */
+    void duplicateOperands (Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap, BasicBlock &ErrBB) {
+      Instruction *IClone = NULL;
+      // see if I has a clone
+      if (DuplicatedInstructionMap.find(&I) != DuplicatedInstructionMap.end()) {
+        Value *VClone = DuplicatedInstructionMap.find(&I)->second;
+        if (isa<Instruction>(VClone)) {
+          IClone = cast<Instruction>(VClone);
         }
       }
-      // if the value is a store instruction we need to duplicate its operands (if not duplicated already) and add consistency checks
-      else if (isa<StoreInst>(I)) {
-        LLVM_DEBUG(dbgs() << "Working on store instruction: " << I << "\n");
-        I.getParent()->splitBasicBlockBefore(&I);
-        Instruction *Operand = cast<Instruction>(I.getOperand(0));
-        auto Duplicate = DuplicatedInstructionMap.find(Operand);
+
+      int J = 0;
+      // iterate over the operands and switch them with their duplicates in the duplicated instructions
+      for (Value *V : I.operand_values()) {
+        LLVM_DEBUG(dbgs() << "Found operand: " << V << "\n\tisa<Instruction>: " << isa<Instruction>(V) << "\n");
+
+
         // if the operand has not been duplicated we need to duplicate it
-        if (!isValueDuplicated(DuplicatedInstructionMap, *Operand)) {
-          duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
-          Duplicate = DuplicatedInstructionMap.find(Operand);
+
+        if (isa<Instruction>(V)) {
+          Instruction *Operand = cast<Instruction>(V);
+          if(!isValueDuplicated(DuplicatedInstructionMap, *Operand))
+            duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
         }
-        // if the operand has been duplicated we add the consistency check
-        if (Duplicate != DuplicatedInstructionMap.end()) {
-          Instruction *Original = Duplicate->first;
-          Instruction *Copy = Duplicate->second;
 
-          BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
-          //I.getParent()->replaceAllUsesWith(VerificationBB); // put all outgoing branches from the original branch to the clone
-          I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
-          IRBuilder<> B(VerificationBB);
+        if (IClone != NULL) {
+          // use the duplicated instruction as operand of IClone
+          auto Duplicate = DuplicatedInstructionMap.find(V);
+          if (Duplicate != DuplicatedInstructionMap.end()) 
+            IClone->setOperand(J, Duplicate->second); // set the J-th operand with the duplicate value
+        }
+        J++;
+      }
+    }
 
-          // check whether the duplicated instruction is a pointer and eventually add the compare between their pointed value
-          if (Original->getType()->isPointerTy()) {
-            int isUsedByStore = 0;
-            for (User *U : Original->users()) {
-              if (isa<StoreInst>(U) && U != Operand) {
-                isUsedByStore = 1;
-                break;
+    Value* getPtrFinalValue(Value &V) {
+      Value *res = NULL;
+
+      if (V.getType()->isPointerTy()) {
+        // find the store using V as ptr
+        for (User *U : V.users()) {
+          if (isa<StoreInst>(U)) {
+            StoreInst *SI = cast<StoreInst>(U);
+            if (SI->getPointerOperand() == &V) { // we found the store
+
+              // if the store saves a pointer we work recursively to find the original value
+              if (SI->getValueOperand()->getType()->isPointerTy()) {
+                return getPtrFinalValue(*(SI->getValueOperand()));
+              }
+              else {
+                return &V;
               }
             }
-            if (is_used_by_store(*Operand, *Original)) {
-              Original = B.CreateLoad(Original->getType(), Original);
-              Copy = B.CreateLoad(Copy->getType(), Copy);
-              Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
-              B.CreateCondBr(Cond, I.getParent(), &ErrBB);
+          }
+        }
+      }
+      
+      return res;
+    }
+
+    Value* comparePtrs(Value &V1, Value &V2, IRBuilder<> &B) {
+      /**
+       * synthax `store val, ptr`
+       * 
+       * There is the following case:
+       * store a, b
+       * store b, c
+       * 
+       * If I have c, I need to perform 2 loads: one load for finding b and one load for finding a
+       * _b = load c
+       * _a = load _b
+      */
+
+      Value *F1 = getPtrFinalValue(V1);
+      Value *F2 = getPtrFinalValue(V2);
+
+      if (F1 != NULL && F2 != NULL) {
+        Instruction *L1 = B.CreateLoad(F1->getType(), F1);
+        Instruction *L2 = B.CreateLoad(F2->getType(), F2);
+        return B.CreateCmp(CmpInst::ICMP_EQ, L1, L2);
+      }
+      return NULL;
+    }
+
+    /**
+     * Adds a consistency check on the instruction I
+    */
+    void addConsistencyChecks(Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap, BasicBlock &ErrBB) {
+      std::vector<Value*> CmpInstructions;
+      
+      // split and add the verification BB
+      I.getParent()->splitBasicBlockBefore(&I);
+      BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
+      I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
+      IRBuilder<> B(VerificationBB);
+      
+      // add compare for each operand
+      for (Value *V : I.operand_values()) {
+        if (isa<Instruction>(V)) { 
+
+          // get the duplicate of the operand
+          Instruction *Operand = cast<Instruction>(V);
+          if (!is_used_by_store(*Operand, I)) {
+            continue;
+          }
+          auto Duplicate = DuplicatedInstructionMap.find(Operand);
+
+          // if the duplicate exists we perform a compare
+          if (Duplicate != DuplicatedInstructionMap.end()) {
+            Value *Original = Duplicate->first;
+            Value *Copy = Duplicate->second;
+
+            // if the operand is a pointer we try to get a compare on pointers
+            if (Original->getType()->isPointerTy()) {
+              Value *CmpInstr = comparePtrs(*Original, *Copy, B);
+              if (CmpInstr != NULL) {
+                CmpInstructions.push_back(CmpInstr);
+              }
             }
+            // else we just add a compare
             else {
-              B.CreateBr(I.getParent());
-            }
-/* 
-            IRBuilder<> B1(I.getParent());
-            B1.SetInsertPoint(I.getNextNonDebugInstruction());
-            auto *TmpLoad = B1.CreateLoad(Original->getType(), Original);
-            auto *TmpStore = B1.CreateStore(TmpLoad, Copy); */
-            //DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpLoad, TmpStore));
-          }
-          else {
-            Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
-            B.CreateCondBr(Cond, I.getParent(), &ErrBB);
-          }
-        }
-        // duplicate the store
-        LLVM_DEBUG(dbgs() << "Duplicating instruction: " << I << "\n");
-        Instruction *IClone = I.clone();
-        IClone->insertAfter(&I);
-        DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(&I, IClone));
-        // get the operand's duplicate, if they exist
-        int J = 0;
-        for (auto Op : I.operand_values()) {
-          if (isa<Instruction>(Op)) {
-            Duplicate = DuplicatedInstructionMap.find(cast<Instruction>(Op));
-            if (Duplicate != DuplicatedInstructionMap.end()) {
-              IClone->setOperand(J, Duplicate->second);
+              CmpInstructions.push_back(B.CreateCmp(CmpInst::ICMP_EQ, Original, Copy));
             }
           }
-          J++;
         }
+      }
+
+      if(!CmpInstructions.empty()) {
+        // all comparisons must be true
+        Value *AndInstr = B.CreateAnd(CmpInstructions);
+        B.CreateCondBr(AndInstr, I.getParent(), &ErrBB);
+      }
+
+      if(VerificationBB->size() == 0) {
+        B.CreateBr(I.getParent());
+      }
+    }
+
+    void fixFuncValsPassedByReference(Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap, IRBuilder<> &B) {
+      //errs() << I << "\n";
+      int numOps = I.getNumOperands();
+      for (int i = 0; i<numOps; i++) {
+        Value *V = I.getOperand(i);
+        if (isa<Instruction>(V) && V->getType()->isPointerTy()) { 
+          Instruction *Operand = cast<Instruction>(V);
+          auto Duplicate = DuplicatedInstructionMap.find(Operand);
+          // if the operand has been duplicated we add the consistency check
+          if (Duplicate != DuplicatedInstructionMap.end()) {
+            Value *Original = Duplicate->first;
+            Value *Copy = Duplicate->second;
+            Instruction *TmpLoad = B.CreateLoad(Original->getType(), Original);
+            Instruction *TmpStore = B.CreateStore(TmpLoad, Copy);
+            DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpLoad, TmpLoad));
+            DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpStore, TmpStore));
+          }
+        }
+      }
+    }
+
+    Function *getFunctionDuplicate(Function *Fn) {
+      if (Fn == NULL || Fn->getName().endswith("_dup")){
+        return Fn;
+      }
+
+      Function *FnDup = Fn->getParent()->getFunction(Fn->getName().str() + "_dup");
+      if (FnDup == NULL) {
+        FnDup = Fn->getParent()->getFunction(Fn->getName().str() + "_ret_dup");
+      }
+      return FnDup;
+    }
+
+    /**
+     * @returns 1 if the instruction has to be removed, 0 otherwise
+    */
+    int duplicateInstruction (Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap, BasicBlock &ErrBB) {
+      if (isValueDuplicated(DuplicatedInstructionMap, I)) {
+        return 0;
+      }
+      
+      int res = 0;
+      
+      // if the instruction is an alloca instruction we need to duplicate it
+      if (isa<AllocaInst>(I)) {
+        cloneInstr(I, DuplicatedInstructionMap);
+      }
+
+      // if the instruction is a binary/unary instruction we need to duplicate it checking for its operands
+      else if (isa<BinaryOperator, UnaryInstruction, LoadInst, GetElementPtrInst, CmpInst, PHINode>(I)) {
+        // duplicate the instruction
+        Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
+
+        // duplicate the operands
+        duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
+      }
+
+      // if the instruction is a store instruction we need to duplicate it and its operands (if not duplicated already) and add consistency checks
+      else if (isa<StoreInst>(I)) {
+        Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
+
+        // duplicate the operands
+        duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
+
+        // add consistency checks on I
+        addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+
         // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
         if (IClone->isIdenticalTo(&I)) {
           IClone->eraseFromParent();
           DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
         }
       }
-      else if(isa<BranchInst, SwitchInst, ReturnInst, CallBase>(I)) {
-        I.getParent()->splitBasicBlockBefore(&I);
-        // iterate over the operands and switch them with their duplicates in the duplicated instructions
-        for (Value *V : I.operand_values()) {
-          LLVM_DEBUG(dbgs() << "Found operand: " << V << "\n\tisa<Instruction>: " << isa<Instruction>(V) << "\n");
-          if (isa<Instruction>(V)) { // if V is coming from an instruction we need to duplicate it
-            Instruction *Operand = cast<Instruction>(V);
-            auto Duplicate = DuplicatedInstructionMap.find(Operand);
-            // if the operand has not been duplicated we need to duplicate it
-            if (!isValueDuplicated(DuplicatedInstructionMap, *Operand)) {
-              duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
-              Duplicate = DuplicatedInstructionMap.find(Operand);
-            }
-            // if the operand has been duplicated we add the consistency check
-            if (Duplicate != DuplicatedInstructionMap.end()) {
-              Instruction *Original = Duplicate->first;
-              Instruction *Copy = Duplicate->second;
 
-              // check whether the duplicated instruction is a pointer and eventually add the compare between their pointed value
-              if (Original->getType()->isPointerTy()) {
-                int isUsedByStore = 0;
-                for (User *U : Original->users()) {
-                  if (isa<StoreInst>(U) && U != V) {
-                    isUsedByStore = 1;
-                    break;
-                  }
-                }
-                if (is_used_by_store(*Operand, *Original)) {
-                  BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
-                  I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
-                  IRBuilder<> B(VerificationBB);
-                  auto *LOriginal = B.CreateLoad(Original->getType(), Original);
-                  auto *LCopy = B.CreateLoad(Copy->getType(), Copy);
-                  Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, LOriginal, LCopy);
-                  B.CreateCondBr(Cond, I.getParent(), &ErrBB);
-                }
-                if (isa<CallBase>(I)) { // add instructions at the end to account for function modifications
-                  IRBuilder<> B1(I.getParent());
-                  B1.SetInsertPoint(I.getNextNode());
-                  Instruction *TmpLoad = B1.CreateLoad(Original->getType(), Original);
-                  Instruction *TmpStore = B1.CreateStore(TmpLoad, Copy);
-                  DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpLoad, TmpLoad));
-                  DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpStore, TmpStore));
-                }
-              }
-              else {
-                BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
-                I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
-                IRBuilder<> B(VerificationBB);
-                Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, Original, Copy);
-                B.CreateCondBr(Cond, I.getParent(), &ErrBB);
-              }
+      // if the instruction is a branch/switch/return instruction, we need to duplicate its operands (if not duplicated already) and add consistency checks
+      else if(isa<BranchInst, SwitchInst, ReturnInst>(I)) {
+        // duplicate the operands
+        duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
+
+        // add consistency checks on I
+        addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+      }
+
+      else if(isa<CallBase>(I)) {
+        // duplicate the operands
+        duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
+
+        // add consistency checks on I
+        addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+
+        // get the function with the duplicated signature, if it exists
+        IRBuilder<> B(I.getNextNonDebugInstruction());
+        CallBase *CInstr = cast<CallBase>(&I);
+        Function *Fn = getFunctionDuplicate(CInstr->getCalledFunction());
+        if (Fn != NULL) {
+          //errs() << Fn->getName() << "\n";
+          Function *OriginalFn = CInstr->getCalledFunction();
+          std::vector<Value*> args;
+          for (Value *Original : CInstr->args()) {
+            Value *Copy = Original;
+            // see if Original has a copy
+            if (DuplicatedInstructionMap.find(cast<Instruction>(Original)) != DuplicatedInstructionMap.end()) {
+              Copy = DuplicatedInstructionMap.find(cast<Instruction>(Original))->second;
             }
+            args.push_back(Original);
+            args.push_back(Copy);
+          }
+          
+          if (Fn != CInstr->getCalledFunction()){
+            Instruction *NewCInstr = B.CreateCall(Fn->getFunctionType(), Fn, args);
+            res = 1;
+            //fixFuncValsPassedByReference(*NewCInstr, DuplicatedInstructionMap, B);
+            CInstr->replaceNonMetadataUsesWith(NewCInstr);
           }
         }
+        else {
+          fixFuncValsPassedByReference(*CInstr, DuplicatedInstructionMap, B);
+        }
       }
+      return res;
     }
 
-    bool isValueDuplicated(std::map<Instruction *, Instruction *> &DuplicatedInstructionMap, Instruction &V) {
+    bool isValueDuplicated(std::map<Value *, Value *> &DuplicatedInstructionMap, Instruction &V) {
       for (auto Elem : DuplicatedInstructionMap) {
         if (Elem.first == &V || Elem.second == &V) {
           return true;
@@ -280,28 +394,99 @@ struct EDDIVerification : public ModulePass {
       return false;
     }
 
-  public:
+    Function *duplicateFnArgs(Function &Fn, Module &Md, std::map<Value *, Value *> &DuplicatedInstructionMap) {
+      Type *RetType = Fn.getReturnType();
+      FunctionType *FnType = Fn.getFunctionType();
+
+      // create the param type list
+      std::vector<Type*> paramTypeList;
+      for (Type *ParamType : FnType->params()) {
+          paramTypeList.push_back(ParamType);
+          paramTypeList.push_back(ParamType); // two times
+      }
+
+      // update the function type adding the duplicated args
+      FunctionType *NewFnType = FnType->get(RetType,              // returntype
+                                          paramTypeList,          // params
+                                          FnType->isVarArg());    // vararg
+      
+      // create the function and clone the old one
+      Function *ClonedFunc = Fn.Create(NewFnType, Fn.getLinkage(), Fn.getName() + "_dup", Fn.getParent());
+      ValueToValueMapTy Params;
+      for (int i=0; i < Fn.arg_size(); i++) {
+          Params[Fn.getArg(i)] = ClonedFunc->getArg(i*2);
+      }
+      SmallVector<ReturnInst*, 8> returns;
+      CloneFunctionInto(ClonedFunc, &Fn, Params, CloneFunctionChangeType::GlobalChanges, returns);
+
+      return ClonedFunc;
+    }
+
+  public: // TODO fix the duplications inside _ret_dup functions
+    std::map<Function*, StringRef> FuncAnnotations;
     /**
      * I have to duplicate all instructions except function calls and branches
      * @param Md
      * @return
      */
     bool runOnModule(Module &Md) override {
-      std::map<Function*, StringRef> FuncAnnotations;
       getFuncAnnotations(Md, FuncAnnotations);
+      std::map<Value *, Value *>
+              DuplicatedInstructionMap; // is a map containing the instructions
+                                        // and their duplicates
+
+      // store the functions that are currently in the module
+      std::list<Function*> FnList;
+      std::set<Function*> DuplicatedFns;
+
+      for (Function &Fn : Md) {
+          if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
+              FnList.push_back(&Fn);
+          }
+      }
+
+      for (Function *Fn : FnList) {
+          Function *newFn = duplicateFnArgs(*Fn, Md, DuplicatedInstructionMap);
+          DuplicatedFns.insert(newFn);
+      }
+
+      std::list<Instruction*> InstructionsToRemove;
 
       for (Function &Fn : Md) {
         if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
-        //if (!Fn.isDeclarationForLinker() && ((*FuncAnnotations.find(&Fn)).second.startswith("include") || (*FuncAnnotations.find(&Fn)).second.startswith("task"))) {
           LLVM_DEBUG(dbgs() << Fn.getName() << "\n");
-          std::map<Instruction *, Instruction *>
-              DuplicatedInstructionMap; // is a map containing the instructions
-                                        // and their duplicates
           BasicBlock *ErrBB = BasicBlock::Create(Fn.getContext(), "ErrBB", &Fn);
+
+          // if the function is a duplicated one
+          if (DuplicatedFns.find(&Fn) != DuplicatedFns.end()) {
+
+            // store the function arguments and their duplicates
+            for (int i=0; i < Fn.arg_size(); i=i+2) {
+              Value *Arg = Fn.getArg(i);
+              Value *ArgClone = Fn.getArg(i+1);
+              DuplicatedInstructionMap.insert(std::pair<Value*, Value*>(Arg, ArgClone));
+            }
+
+            // duplicate the users of each argument
+            for (int i=0; i < Fn.arg_size(); i=i+2) {
+              Value *Arg = Fn.getArg(i);
+              for (User *U : Arg->users()) {
+                if (isa<Instruction>(U)) {
+                  // duplicate the uses of each argument
+                  duplicateInstruction(cast<Instruction>(*U), DuplicatedInstructionMap, *ErrBB);
+                }
+              }
+            }
+          }
+      
+
           for (BasicBlock &BB : Fn) {
             for (Instruction &I : BB) {
               if (!isValueDuplicated(DuplicatedInstructionMap, I)) {
-                duplicateInstruction(I, DuplicatedInstructionMap, *ErrBB);
+                int shouldDelete = duplicateInstruction(I, DuplicatedInstructionMap, *ErrBB);
+                if (shouldDelete) {
+                  InstructionsToRemove.push_back(&I);
+                }
               }
             }
           }
@@ -310,14 +495,17 @@ struct EDDIVerification : public ModulePass {
               "DataCorruption_Handler", FunctionType::getVoidTy(Md.getContext()));
           ErrB.CreateCall(CalleeF)->setDebugLoc(ErrB.getCurrentDebugLocation());
           ErrB.CreateBr(ErrBB);
-        }
-        if (Fn.getName().equals("TIM_TI1_SetConfig")) {
+        }/* 
+        if (Fn.getName().equals("myFunction")) {
           errs() << Fn;
-        }
+        } */
       }
       //errs() << Md;
 
-      persist_compiled_functions(Md, FuncAnnotations);
+      for (Instruction *I2rm : InstructionsToRemove) {
+        I2rm->eraseFromParent();
+      }
+      
       return true;
     }
 };

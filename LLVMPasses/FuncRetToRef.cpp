@@ -87,7 +87,7 @@ Function* updateFnSignature(Function &Fn, Module &Md) {
                                             FnType->isVarArg());              // vararg
     
     // create the function and clone the old one
-    Function *ClonedFunc = Fn.Create(NewFnType, Fn.getLinkage(), Fn.getName() + "_dup", Md);
+    Function *ClonedFunc = Fn.Create(NewFnType, Fn.getLinkage(), Fn.getName() + "_ret", Md);
     ValueToValueMapTy Params;
     for (int i=0; i < Fn.arg_size(); i++) {
         Params[Fn.getArg(i)] = ClonedFunc->getArg(i);
@@ -141,8 +141,8 @@ void updateFunctionCalls(Function &Fn, Function &NewFn) {
     std::list<Instruction*> ListInstrToRemove;
     
     for (User *U : Fn.users()) {
-        if (isa<CallInst>(U)) {
-            CallInst *CInstr = cast<CallInst>(U); // this is the instruction that called the function
+        if (isa<CallBase>(U)) {
+            CallBase *CInstr = cast<CallBase>(U); // this is the instruction that called the function
             
             // duplicate all the args of the original instruction and add a new arg for the ret value
             std::vector<Value*> args;
@@ -209,7 +209,7 @@ public:
         }
 
         for (Function *Fn : FnList) {
-            errs() << Fn->getName() << "\n";
+            //errs() << Fn->getName() << "\n";
             Function *newFn = updateFnSignature(*Fn, Md);
             if (newFn != NULL) {
                 updateFunctionCalls(*Fn, *newFn); 
@@ -219,7 +219,7 @@ public:
 
         for (Function &Fn : Md) {
             if (Fn.getName().equals("prvTaskCheckFreeStackSpace_dup")) {
-                errs() << Fn;
+                //errs() << Fn;
             }
         }
         return 1;
