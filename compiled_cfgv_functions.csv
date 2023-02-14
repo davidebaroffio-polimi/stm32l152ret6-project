@@ -152,6 +152,7 @@ main
 vTaskCode1
 vTaskCode2
 vTaskDES
+xStreamBufferGenericCreate
 prvInitialiseNewStreamBuffer
 xStreamBufferGenericCreateStatic
 vStreamBufferDelete
@@ -292,6 +293,7 @@ xEventGroupGetBitsFromISR_ret
 xEventGroupSetBitsFromISR_ret
 uxEventGroupGetNumber_ret
 main_ret
+xStreamBufferGenericCreate_ret
 xStreamBufferGenericCreateStatic_ret
 xStreamBufferReset_ret
 xStreamBufferSetTriggerLevel_ret
@@ -496,6 +498,7 @@ main_dup
 vTaskCode1_dup
 vTaskCode2_dup
 vTaskDES_dup
+xStreamBufferGenericCreate_dup
 prvInitialiseNewStreamBuffer_dup
 xStreamBufferGenericCreateStatic_dup
 vStreamBufferDelete_dup
@@ -636,6 +639,7 @@ xEventGroupGetBitsFromISR_ret_dup
 xEventGroupSetBitsFromISR_ret_dup
 uxEventGroupGetNumber_ret_dup
 main_ret_dup
+xStreamBufferGenericCreate_ret_dup
 xStreamBufferGenericCreateStatic_ret_dup
 xStreamBufferReset_ret_dup
 xStreamBufferSetTriggerLevel_ret_dup

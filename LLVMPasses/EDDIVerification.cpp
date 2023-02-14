@@ -312,7 +312,7 @@ struct EDDIVerification : public ModulePass {
       }
 
       // if the instruction is a binary/unary instruction we need to duplicate it checking for its operands
-      else if (isa<BinaryOperator, UnaryInstruction, LoadInst, GetElementPtrInst, CmpInst, PHINode>(I)) {
+      else if (isa<BinaryOperator, UnaryInstruction, LoadInst, GetElementPtrInst, CmpInst, PHINode, SelectInst>(I)) {
         // duplicate the instruction
         Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
 
@@ -321,7 +321,7 @@ struct EDDIVerification : public ModulePass {
       }
 
       // if the instruction is a store instruction we need to duplicate it and its operands (if not duplicated already) and add consistency checks
-      else if (isa<StoreInst>(I)) {
+      else if (isa<StoreInst, AtomicRMWInst, AtomicCmpXchgInst>(I)) {
         Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
 
         // duplicate the operands
@@ -338,7 +338,7 @@ struct EDDIVerification : public ModulePass {
       }
 
       // if the instruction is a branch/switch/return instruction, we need to duplicate its operands (if not duplicated already) and add consistency checks
-      else if(isa<BranchInst, SwitchInst, ReturnInst>(I)) {
+      else if(isa<BranchInst, SwitchInst, ReturnInst, IndirectBrInst>(I)) {
         // duplicate the operands
         duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
@@ -440,7 +440,7 @@ struct EDDIVerification : public ModulePass {
       std::set<Function*> DuplicatedFns;
 
       for (Function &Fn : Md) {
-          if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
+          if (!Fn.isDeclarationForLinker() /* && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude") */) {
               FnList.push_back(&Fn);
           }
       }
@@ -453,7 +453,7 @@ struct EDDIVerification : public ModulePass {
       std::list<Instruction*> InstructionsToRemove;
 
       for (Function &Fn : Md) {
-        if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
+        if (!Fn.isDeclarationForLinker() /* && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude") */) {
           LLVM_DEBUG(dbgs() << Fn.getName() << "\n");
           BasicBlock *ErrBB = BasicBlock::Create(Fn.getContext(), "ErrBB", &Fn);
 
