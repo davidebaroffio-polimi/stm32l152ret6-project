@@ -51,7 +51,6 @@ struct EDDIVerification : public ModulePass {
                             dyn_cast<ConstantDataArray>(GAnn->getOperand(0))) {
                       // we have the annotation!
                       StringRef AS = A->getAsString();
-                      //errs() << "Annotation found: " << AS << "\n";
                       FuncAnnotations.insert(std::pair<Function*, StringRef>(AnnotatedFunction, AS));                      // if the function is new, add it to the annotated functions
                     }
                   }
@@ -220,6 +219,8 @@ struct EDDIVerification : public ModulePass {
       BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
       I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
       IRBuilder<> B(VerificationBB);
+
+      int num_NotUsedByStore = 0;
       
       // add compare for each operand
       for (Value *V : I.operand_values()) {
@@ -227,7 +228,8 @@ struct EDDIVerification : public ModulePass {
 
           // get the duplicate of the operand
           Instruction *Operand = cast<Instruction>(V);
-          if (!is_used_by_store(*Operand, I)) {
+          if (Operand->getType()->isPointerTy() && !is_used_by_store(*Operand, I)) {
+            num_NotUsedByStore++;
             continue;
           }
           auto Duplicate = DuplicatedInstructionMap.find(Operand);
@@ -264,7 +266,6 @@ struct EDDIVerification : public ModulePass {
     }
 
     void fixFuncValsPassedByReference(Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap, IRBuilder<> &B) {
-      //errs() << I << "\n";
       int numOps = I.getNumOperands();
       for (int i = 0; i<numOps; i++) {
         Value *V = I.getOperand(i);
@@ -364,20 +365,18 @@ struct EDDIVerification : public ModulePass {
 
       // if the instruction is a store instruction we need to duplicate it and its operands (if not duplicated already) and add consistency checks
       else if (isa<StoreInst, AtomicRMWInst, AtomicCmpXchgInst>(I)) {
-        if (!hasGlobalOperand(I)) {
-          Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
+        Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
 
-          // duplicate the operands
-          duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
+        // duplicate the operands
+        duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
-          // add consistency checks on I
-          addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+        // add consistency checks on I
+        addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
 
-          // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
-          if (IClone->isIdenticalTo(&I)) {
-            IClone->eraseFromParent();
-            DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
-          }
+        // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
+        if (IClone->isIdenticalTo(&I)) {
+          IClone->eraseFromParent();
+          DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
         }
       }
 
@@ -402,7 +401,6 @@ struct EDDIVerification : public ModulePass {
         CallBase *CInstr = cast<CallBase>(&I);
         Function *Fn = getFunctionDuplicate(CInstr->getCalledFunction());
         if (Fn != NULL) {
-          //errs() << Fn->getName() << "\n";
           Function *OriginalFn = CInstr->getCalledFunction();
           std::vector<Value*> args;
           for (Value *Original : CInstr->args()) {
@@ -525,7 +523,6 @@ struct EDDIVerification : public ModulePass {
             }
           }
       
-
           for (BasicBlock &BB : Fn) {
             for (Instruction &I : BB) {
               if (!isValueDuplicated(DuplicatedInstructionMap, I)) {
@@ -541,12 +538,8 @@ struct EDDIVerification : public ModulePass {
               "DataCorruption_Handler", FunctionType::getVoidTy(Md.getContext()));
           ErrB.CreateCall(CalleeF)->setDebugLoc(ErrB.getCurrentDebugLocation());
           ErrB.CreateBr(ErrBB);
-        }/* 
-        if (Fn.getName().equals("myFunction")) {
-          errs() << Fn;
-        } */
+        }
       }
-      //errs() << Md;
 
       for (Instruction *I2rm : InstructionsToRemove) {
         I2rm->eraseFromParent();
