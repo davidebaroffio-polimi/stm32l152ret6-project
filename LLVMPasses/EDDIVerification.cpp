@@ -296,6 +296,48 @@ struct EDDIVerification : public ModulePass {
       return FnDup;
     }
 
+    bool hasGlobalOperand (Instruction &I) {
+      Value *Op = NULL;
+      if (isa<StoreInst>(I)) {
+        Op = cast<StoreInst>(I).getPointerOperand();
+      }
+      else if (isa<AtomicRMWInst>(I)) {
+        Op = cast<AtomicRMWInst>(I).getPointerOperand();
+      }
+      else if (isa<AtomicCmpXchgInst>(I)) {
+        Op = cast<AtomicCmpXchgInst>(I).getPointerOperand();
+      }
+      return Op != NULL && isa<GlobalVariable>(Op);
+    }
+
+    void duplicateGlobals (Module &Md, std::map<Value *, Value *> &DuplicatedInstructionMap) {
+      for (GlobalVariable &GV : Md.globals()) {
+        if (! (GV.getType()->isFunctionTy() || GV.isConstant() || GV.getValueType()->isStructTy() || GV.getValueType()->isArrayTy() || GV.getValueType()->isOpaquePointerTy())
+            && ! GV.getName().endswith("_dup")) {
+              
+          Constant *Initializer = NULL;
+          if (GV.hasInitializer()) {
+            Initializer = GV.getInitializer();
+          }
+          // get a copy of the global variable
+          GlobalVariable *GVCopy = new GlobalVariable(
+                                        Md,
+                                        GV.getValueType(), 
+                                        false,
+                                        GV.getLinkage(),
+                                        Initializer,
+                                        GV.getName()+"_dup",
+                                        &GV,
+                                        GV.getThreadLocalMode(),
+                                        GV.getAddressSpace(),
+                                        GV.isExternallyInitialized()
+                                        );
+          GVCopy->setAlignment(GV.getAlign());
+          DuplicatedInstructionMap.insert(std::pair<Value*, Value*>(&GV, GVCopy));
+        }
+      }
+    }
+
     /**
      * @returns 1 if the instruction has to be removed, 0 otherwise
     */
@@ -322,18 +364,20 @@ struct EDDIVerification : public ModulePass {
 
       // if the instruction is a store instruction we need to duplicate it and its operands (if not duplicated already) and add consistency checks
       else if (isa<StoreInst, AtomicRMWInst, AtomicCmpXchgInst>(I)) {
-        Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
+        if (!hasGlobalOperand(I)) {
+          Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
 
-        // duplicate the operands
-        duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
+          // duplicate the operands
+          duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
-        // add consistency checks on I
-        addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+          // add consistency checks on I
+          addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
 
-        // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
-        if (IClone->isIdenticalTo(&I)) {
-          IClone->eraseFromParent();
-          DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
+          // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
+          if (IClone->isIdenticalTo(&I)) {
+            IClone->eraseFromParent();
+            DuplicatedInstructionMap.erase(DuplicatedInstructionMap.find(&I));
+          }
         }
       }
 
@@ -422,7 +466,7 @@ struct EDDIVerification : public ModulePass {
       return ClonedFunc;
     }
 
-  public: // TODO fix the duplications inside _ret_dup functions
+  public:
     std::map<Function*, StringRef> FuncAnnotations;
     /**
      * I have to duplicate all instructions except function calls and branches
@@ -435,13 +479,15 @@ struct EDDIVerification : public ModulePass {
               DuplicatedInstructionMap; // is a map containing the instructions
                                         // and their duplicates
 
+      duplicateGlobals(Md, DuplicatedInstructionMap);
+
       // store the functions that are currently in the module
       std::list<Function*> FnList;
       std::set<Function*> DuplicatedFns;
 
       for (Function &Fn : Md) {
-          if (!Fn.isDeclarationForLinker() /* && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude") */) {
-              FnList.push_back(&Fn);
+          if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
+            FnList.push_back(&Fn);
           }
       }
 
@@ -453,7 +499,7 @@ struct EDDIVerification : public ModulePass {
       std::list<Instruction*> InstructionsToRemove;
 
       for (Function &Fn : Md) {
-        if (!Fn.isDeclarationForLinker() /* && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude") */) {
+        if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
           LLVM_DEBUG(dbgs() << Fn.getName() << "\n");
           BasicBlock *ErrBB = BasicBlock::Create(Fn.getContext(), "ErrBB", &Fn);
 
