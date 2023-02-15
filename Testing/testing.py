@@ -169,7 +169,16 @@ def main():
                     print(what_to_alter, "=", what_to_alter, "^", bitflip, "after", delay, "seconds")
 
                     ### TODO change the `+` into `^`
-                    write(p_gdb, b'set '+ what_to_alter+ b' = ' + what_to_alter + b' ^ $bitflip\n')
+                    if what_to_alter in [b'$r13', b'$r14', b'$r15']:
+                        write(p_gdb, b'print (int)'+what_to_alter)
+                        ln = read(p_gdb, "^\$.* = .*\n$")
+                        ln_array = ln.decode("utf-8").split(" ")
+                        new_value = int(ln_array[-1][:-1]) ^ bitflip
+                        print(b'set ' + what_to_alter + b' = ' + str.encode(str(new_value)) + b'\n')
+                        write(p_gdb, b'set ' + what_to_alter + b' = ' + str.encode(str(new_value)) + b'\n')
+                    else:
+                        write(p_gdb, b'set '+ what_to_alter+ b' = ' + what_to_alter + b' ^ $bitflip\n')
+                    
                     write(p_gdb, b'c\n')
 
                     ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
