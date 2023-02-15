@@ -164,17 +164,16 @@ def main():
                     # Set a breakpoint to Incorrect_Result => the fault has not been detected and a wrong output was submitted
                     write(p_gdb, b'b *Incorrect_Result\n')
                     # Set a breakpoint to a check location => the fault didn't alter the execution
-                    write(p_gdb, b'b *done\n')
+                    write(p_gdb, b'b *done_ret_dup\n')
 
                     print(what_to_alter, "=", what_to_alter, "^", bitflip, "after", delay, "seconds")
 
                     ### TODO change the `+` into `^`
                     if what_to_alter in [b'$r13', b'$r14', b'$r15']:
-                        write(p_gdb, b'print (int)'+what_to_alter)
-                        ln = read(p_gdb, "^\$.* = .*\n$")
+                        write(p_gdb, b'print (int)' + what_to_alter + b'\n')
+                        ln = read(p_gdb, "^.*\$.* = .*\n$")
                         ln_array = ln.decode("utf-8").split(" ")
                         new_value = int(ln_array[-1][:-1]) ^ bitflip
-                        print(b'set ' + what_to_alter + b' = ' + str.encode(str(new_value)) + b'\n')
                         write(p_gdb, b'set ' + what_to_alter + b' = ' + str.encode(str(new_value)) + b'\n')
                     else:
                         write(p_gdb, b'set '+ what_to_alter+ b' = ' + what_to_alter + b' ^ $bitflip\n')
@@ -194,7 +193,7 @@ def main():
                             code = -1
                         elif(ln_array[-2] == "Incorrect_Result"):
                             code = -2
-                        elif(ln_array[-2] == "done"):
+                        elif(ln_array[-2] == "done_ret_dup"):
                             write(p_gdb, b'c\n')
                             ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
                             if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
@@ -209,7 +208,7 @@ def main():
                                     code = -1
                                 elif(ln_array[-2] == "Incorrect_Result"):
                                     code = -2
-                                elif(ln_array[-2] == "done"):
+                                elif(ln_array[-2] == "done_ret_dup"):
                                     code = 0
 
                     # Collect results
