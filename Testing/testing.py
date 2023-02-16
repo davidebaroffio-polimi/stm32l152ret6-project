@@ -95,8 +95,8 @@ def read(process, pattern, timeout = 2.0, debug=False):
 def main():
     faults = 0
     attempt = 0
-    #for attempt in range(0, 1000):
-    while True:
+    for attempt in range(0, 15000):
+    #while True:
         pid = os.fork()
         if pid == 0:
             # Initialize stlink
