@@ -22,6 +22,7 @@ cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.exter
 
 cmd_gdb = "gdb-multiarch"
 
+seed = 12345
 data = []
 scope = None
 fieldnames = ['attempt', 'stop_addr', 'stop_fn', 'delay', 'target', 'bitflip', 'code']
@@ -162,7 +163,7 @@ def main():
                     # Set a breakpoint to HardFault_Handler => the fault has not been detected and it broke the program
                     write(p_gdb, b'b *HardFault_Handler\n')
                     # Set a breakpoint to Incorrect_Result => the fault has not been detected and a wrong output was submitted
-                    write(p_gdb, b'b *Incorrect_Result\n')
+                    write(p_gdb, b'b *Incorrect_Result_dup\n')
                     # Set a breakpoint to a check location => the fault didn't alter the execution
                     write(p_gdb, b'b *done_ret_dup\n')
 
@@ -191,7 +192,7 @@ def main():
                             code = 2
                         elif(ln_array[-2] == "HardFault_Handler"):
                             code = -1
-                        elif(ln_array[-2] == "Incorrect_Result"):
+                        elif(ln_array[-2] == "Incorrect_Result_dup"):
                             code = -2
                         elif(ln_array[-2] == "done_ret_dup"):
                             write(p_gdb, b'c\n')
@@ -206,7 +207,7 @@ def main():
                                     code = 2
                                 elif(ln_array[-2] == "HardFault_Handler"):
                                     code = -1
-                                elif(ln_array[-2] == "Incorrect_Result"):
+                                elif(ln_array[-2] == "Incorrect_Result_dup"):
                                     code = -2
                                 elif(ln_array[-2] == "done_ret_dup"):
                                     code = 0
@@ -224,7 +225,8 @@ def main():
                                 'delay': delay, 
                                 'target': what_to_alter.decode("utf-8")[1:], 
                                 'bitflip': bitflip, 
-                                'code': code})
+                                'code': code,
+                                'seed': seed })
             else:
                 p_gdb.kill()
             attempt += 1
@@ -264,4 +266,5 @@ if __name__ == "__main__":
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
     signal.signal(signal.SIGINT, handler)
     begin = time.time()
+    random.seed(seed)
     main()
