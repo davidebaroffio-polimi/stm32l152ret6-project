@@ -25,7 +25,7 @@ cmd_gdb = "gdb-multiarch"
 seed = 12345
 data = []
 scope = None
-fieldnames = ['attempt', 'stop_addr', 'stop_fn', 'delay', 'target', 'bitflip', 'code']
+fieldnames = ['attempt', 'stop_addr', 'stop_fn', 'delay', 'target', 'bitflip', 'code', 'seed']
 begin = None
 writable_size = 0
 
