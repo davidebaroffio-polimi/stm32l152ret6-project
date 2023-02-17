@@ -47,7 +47,7 @@ def save_data():
         print("Test lasted for {:.3f} seconds".format(end-begin))
 
         already_exists = os.path.exists('faults_'+scope+'.csv')
-
+        
         with open('faults_'+scope+'.csv', 'a', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             if already_exists == False:
