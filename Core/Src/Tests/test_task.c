@@ -106,7 +106,7 @@ void vTaskTaskTest ( void * pvParameters ) {
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
 
-    void (*functions[2])() = {fnTest1, fnTest2};
+    void (*functions[1])() = {fnTest1};
 
     int i = 0;
     for ( ;; ) {
