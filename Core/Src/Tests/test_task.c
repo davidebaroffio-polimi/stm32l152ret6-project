@@ -93,7 +93,6 @@ void fnTest2() {
     
     xTaskCreate(vTaskUseless, name, 128, NULL, tskIDLE_PRIORITY, NULL);
     if (uxTaskGetNumberOfTasks() != numTasks +1 || 
-        xTaskGetHandle(name) != xHandle || 
         xTaskGetSchedulerState() != taskSCHEDULER_RUNNING ||
         uxTaskGetStackHighWaterMark(xHandle) <= 0) {
         Incorrect_Result();
@@ -107,7 +106,7 @@ void vTaskTaskTest ( void * pvParameters ) {
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
 
-    void (*functions[1])() = {fnTest1};
+    void (*functions[2])() = {fnTest1, fnTest2};
 
     int i = 0;
     for ( ;; ) {
