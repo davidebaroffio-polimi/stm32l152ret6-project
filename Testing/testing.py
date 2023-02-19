@@ -163,9 +163,9 @@ def main():
                     # Set a breakpoint to HardFault_Handler => the fault has not been detected and it broke the program
                     write(p_gdb, b'b *HardFault_Handler\n')
                     # Set a breakpoint to Incorrect_Result => the fault has not been detected and a wrong output was submitted
-                    write(p_gdb, b'b *Incorrect_Result_dup\n')
+                    write(p_gdb, b'b *Incorrect_Result\n')
                     # Set a breakpoint to a check location => the fault didn't alter the execution
-                    write(p_gdb, b'b *done_ret_dup\n')
+                    write(p_gdb, b'b *done\n')
 
                     print(what_to_alter, "=", what_to_alter, "^", bitflip, "after", delay, "seconds")
 
@@ -192,9 +192,9 @@ def main():
                             code = 2
                         elif(ln_array[-2] == "HardFault_Handler"):
                             code = -1
-                        elif(ln_array[-2] == "Incorrect_Result_dup"):
+                        elif(ln_array[-2] == "Incorrect_Result"):
                             code = -2
-                        elif(ln_array[-2] == "done_ret_dup"):
+                        elif(ln_array[-2] == "done"):
                             write(p_gdb, b'c\n')
                             ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
                             if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
@@ -207,9 +207,9 @@ def main():
                                     code = 2
                                 elif(ln_array[-2] == "HardFault_Handler"):
                                     code = -1
-                                elif(ln_array[-2] == "Incorrect_Result_dup"):
+                                elif(ln_array[-2] == "Incorrect_Result"):
                                     code = -2
-                                elif(ln_array[-2] == "done_ret_dup"):
+                                elif(ln_array[-2] == "done"):
                                     code = 0
 
                     # Collect results
@@ -258,6 +258,7 @@ if __name__ == "__main__":
     try:
         with open(elffilename, 'rb') as elffile:
             writable_size = read_writable_address_size(elffile)
+            print(writable_size)
     except:
         print("ERROR - Unable to read file", elffilename)
         print("Usage: python3 testing.py [registers|memory] <elf_filename>")
