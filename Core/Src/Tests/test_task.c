@@ -57,7 +57,7 @@ void vTaskUseless( void * pvParameters ) {
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     
     for ( ;; ) {
-        vTaskDelay(100);
+        vTaskDelay(1);
     }
 }
 
@@ -112,6 +112,6 @@ void vTaskTaskTest ( void * pvParameters ) {
     for ( ;; ) {
         functions[i%1]();
         i++;
-        vTaskDelay(50);
+        vTaskDelay(1);
     }
 }

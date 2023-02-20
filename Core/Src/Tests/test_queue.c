@@ -48,7 +48,7 @@ void vTaskQueueTest1( void * pvParameters ) {
     globalQueuehandle = xQueueCreate(2, ITEM_SIZE);
 
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 100;
+    const TickType_t xFrequency = 1;
     BaseType_t xWasDelayed;
 
     // Initialise the xLastWakeTime variable with the current time.
@@ -73,7 +73,7 @@ void vTaskQueueTest2( void * pvParameters ) {
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
 
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 250;
+    const TickType_t xFrequency = 1;
 
     xLastWakeTime = xTaskGetTickCount ();
     for( ;; )
@@ -108,7 +108,7 @@ void vTaskQueueTest3( void * pvParameters ) {
     {
         int i1 = 1;
         int i2 = 2;
-        vTaskDelay(20);
+        vTaskDelay(1);
         for (int i = 0; i<5; i++) {
             xQueueSendToBack(xQueue, &i2, 0); // send 2
             xQueueSendToFront(xQueue, &i1, 0); // send 1
@@ -143,7 +143,7 @@ void vTaskQueueTest4( void *pvParameters ) {
         queuehandle = xQueueCreate(1, ITEM_SIZE);
 
         vQueueAddToRegistry(queuehandle, "testQueue\0");
-        vTaskDelay(25);
+        vTaskDelay(1);
 
         int i1 = 1;
         xQueueSend(queuehandle, &i1, 0);
@@ -157,11 +157,11 @@ void vTaskQueueTest4( void *pvParameters ) {
         int i2 = 2;
         xQueueOverwrite(queuehandle, &i2);
 
-        vTaskDelay(35);
+        vTaskDelay(1);
 
         vQueueUnregisterQueue(queuehandle);
         vQueueDelete(queuehandle);
 
-        vTaskDelay(110);
+        vTaskDelay(1);
     }
 }

@@ -290,7 +290,7 @@ __attribute__((annotate("task"))) void vTaskCode1( void * pvParameters )
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 100;
+    const TickType_t xFrequency = 1;
     BaseType_t xWasDelayed;
 
     // Initialise the xLastWakeTime variable with the current time.
@@ -315,7 +315,7 @@ __attribute__((annotate("task"))) void vTaskCode2( void * pvParameters )
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 200;
+    const TickType_t xFrequency = 1;
     BaseType_t xWasDelayed;
 
     // Initialise the xLastWakeTime variable with the current time.
@@ -341,7 +341,7 @@ __attribute__((annotate("task"))) void vTaskDES( void * pvParameters )
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 300;
+    const TickType_t xFrequency = 1;
     BaseType_t xWasDelayed;
 
     // Initialise the xLastWakeTime variable with the current time.
