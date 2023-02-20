@@ -1356,7 +1356,7 @@ __attribute__((annotate("include"))) static void prvAddNewTaskToReadyList( TCB_t
 
 #if ( INCLUDE_vTaskDelay == 1 )
 
-    __attribute__((annotate("include"))) void vTaskDelay( const TickType_t xTicksToDelay )
+    __attribute__((annotate("exclude"))) void vTaskDelay( const TickType_t xTicksToDelay )
     {
         BaseType_t xAlreadyYielded = pdFALSE;
 

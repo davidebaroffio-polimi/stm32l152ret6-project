@@ -111,9 +111,7 @@ void vTaskTimerTest ( void * pvParameters ) {
 
         int isDeleted = xTimerDelete(xTimer, 100);
 
-        int cond_incorrect = /* period != 200 ||
-                                reloadMode != pdTRUE ||  */
-                                isDeleted != pdPASS;
+        int cond_incorrect = isDeleted != pdPASS;
 
         if (cond_incorrect) {
             Incorrect_Result();

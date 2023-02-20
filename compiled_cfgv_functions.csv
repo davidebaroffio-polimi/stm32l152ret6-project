@@ -74,7 +74,6 @@ vApplicationGetIdleTaskMemory
 xTaskCreateStatic
 xTaskCreate
 vTaskDelete
-vTaskDelay
 eTaskGetState
 uxTaskPriorityGet
 uxTaskPriorityGetFromISR
@@ -420,7 +419,6 @@ vApplicationGetIdleTaskMemory_dup
 xTaskCreateStatic_dup
 xTaskCreate_dup
 vTaskDelete_dup
-vTaskDelay_dup
 eTaskGetState_dup
 uxTaskPriorityGet_dup
 uxTaskPriorityGetFromISR_dup
