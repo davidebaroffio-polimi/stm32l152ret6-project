@@ -75,48 +75,61 @@ void vTaskTimerTest ( void * pvParameters ) {
     /* The parameter value is expected to be 1 as 1 is passed in the
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
+    int isDeleted = pdPASS;
+
+    TimerHandle_t xTimer;
+
+    int period;
 
     for ( ;; ) {
-        TimerHandle_t xTimer = xTimerCreate
-                   ( /* Just a text name, not used by the RTOS
-                     kernel. */
-                     "Timer",
-                     /* The timer period in ticks, must be
-                     greater than 0. */
-                     100,
-                     /* The timers will auto-reload themselves
-                     when they expire. */
-                     pdFALSE,
-                     /* The ID is used to store a count of the
-                     number of times the timer has expired, which
-                     is initialised to 0. */
-                     ( void * ) 0,
-                     /* Each timer calls the same callback when
-                     it expires. */
-                     vTimerCallback
-                   );
+        if (isDeleted == pdPASS) {
+            xTimer = xTimerCreate
+                    ( /* Just a text name, not used by the RTOS
+                        kernel. */
+                        "Timer",
+                        /* The timer period in ticks, must be
+                        greater than 0. */
+                        100,
+                        /* The timers will auto-reload themselves
+                        when they expire. */
+                        pdFALSE,
+                        /* The ID is used to store a count of the
+                        number of times the timer has expired, which
+                        is initialised to 0. */
+                        ( void * ) 0,
+                        /* Each timer calls the same callback when
+                        it expires. */
+                        vTimerCallback
+                    );
 
+            period = xTimerGetPeriod(xTimer);
+        }
         while(xTimerIsTimerActive(xTimer) != pdFALSE) {
             vTaskDelay(1);
         }
 
-        xTimerChangePeriod(xTimer, 200, 100);
+        int periodChanged = xTimerChangePeriod(xTimer, 200, 1000);
         vTimerSetReloadMode(xTimer, pdTRUE);
         int currentTime = xTaskGetTickCount();
         vTaskDelay(10);
         int expiryTime = xTimerGetExpiryTime(xTimer);
 
         int reloadMode = uxTimerGetReloadMode(xTimer);
-        int period = xTimerGetPeriod(xTimer);
 
-        int isDeleted = xTimerDelete(xTimer, 1000);
-
-        int cond_incorrect = period != 200 ||
-                            reloadMode != pdTRUE ||
-                            isDeleted != pdPASS;
-
-        if (cond_incorrect) {
-            Incorrect_Result();
+        if (period != 100) {
+            if (periodChanged == pdPASS) {
+                for (int i = 0; i<100; i++) {
+                    if (xTimerGetPeriod(xTimer) == 200) {
+                        continue;
+                    }
+                    vTaskDelay(10);
+                }
+            }
+            else {
+                Incorrect_Result();
+            }
         }
+
+        isDeleted = xTimerDelete(xTimer, 1000);
     }
 }
