@@ -397,7 +397,7 @@
     }
 /*-----------------------------------------------------------*/
 
-    __attribute__((annotate("exclude"))) BaseType_t xTimerGenericCommand( TimerHandle_t xTimer,
+    __attribute__((annotate("include"))) BaseType_t xTimerGenericCommand( TimerHandle_t xTimer,
                                      const BaseType_t xCommandID,
                                      const TickType_t xOptionalValue,
                                      BaseType_t * const pxHigherPriorityTaskWoken,
@@ -574,7 +574,7 @@
     }
 /*-----------------------------------------------------------*/
 
-    __attribute__((annotate("exclude"))) static portTASK_FUNCTION( prvTimerTask, pvParameters )
+    __attribute__((annotate("include"))) static portTASK_FUNCTION( prvTimerTask, pvParameters )
     {
         TickType_t xNextExpireTime;
         BaseType_t xListWasEmpty;
@@ -766,6 +766,15 @@
     }
 /*-----------------------------------------------------------*/
 
+    /**
+     * TODO this function cannot be compiled with EDDIVerify since it calls xQueueReceive,
+     * which calls prvCopyDataFromQueue, which calls memcpy. 
+     * 
+     * xMessage and its copy should be passed through the function calls, yet only
+     * the original is filled by the memcpy, creating an inconsistency in this function.
+     * 
+     * Find a way to fix this...
+     */
     __attribute__((annotate("exclude"))) static void prvProcessReceivedCommands( void )
     {
         DaemonTaskMessage_t xMessage;

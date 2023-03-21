@@ -159,6 +159,7 @@ struct CFGVerification : public ModulePass {
       for (Function &Fn : Md) {
         if (!Fn.isDeclarationForLinker()) {
           for (BasicBlock &BB : Fn) {
+            if (!BB.getName().equals_insensitive("errbb"))
             BBSigs.insert(std::pair<BasicBlock *, int>(&BB, Counter));
             Counter++;
           }
@@ -232,35 +233,6 @@ struct CFGVerification : public ModulePass {
     BasicBlock*getFirstPredecessor(BasicBlock &BB,
                                     const std::map<BasicBlock*, int> &BBSigs,
                                     const std::map<BasicBlock*, BasicBlock*> &BBCalls) {
-      //If the block before BB is a caller => the predecessor is the first of the called functions' return blocks
-      if (BBCalls.find(BB.getSinglePredecessor()) != BBCalls.end()) {
-        Function *Called = BBCalls.find(BB.getSinglePredecessor())->second->getParent();
-        for (BasicBlock &CalledBB : *Called) {
-          if(isReturnBB(CalledBB)) {
-            return &CalledBB;
-          }
-        }
-      }
-
-      /* check between the basic blocks that called BB:
-       * - if the caller is the first basic block of an entry function, return it
-       * - otherwise return the first caller found
-       */
-      BasicBlock *Res = NULL;
-      for (auto Elem : BBCalls) {
-        if (Elem.second == &BB) {
-          if (!Res) {
-            Res = Elem.first;
-          }
-          if (Elem.first == &Elem.first->getParent()->front() && Elem.first->getParent()->hasNUses(0)) {
-            return Elem.first;
-          }
-        }
-      }
-      if (Res) {
-        return Res;
-      }
-
       // check between the basic block actual predecessors
       for (auto *Pred : predecessors(&BB)) {
         if (BBSigs.find(Pred) != BBSigs.end()) {
@@ -280,34 +252,27 @@ struct CFGVerification : public ModulePass {
      */
     int getNeighborSig(BasicBlock &BB, const std::map<BasicBlock*, int> &BBSigs,
                        const std::map<BasicBlock*, BasicBlock*> &BBCalls) {
-      int N = 2;
-      std::set<BasicBlock*> Successors;
+      std::set<BasicBlock*> Todo;
+      std::set<BasicBlock*> Candidates;
 
-      // if BB is in BBCalls, add the called BB to the list of successors to check
-      if (BBCalls.find(&BB) != BBCalls.end()) {
-        Successors.insert(BBCalls.find(&BB)->second);
-      }
-      Successors.insert(successors(&BB).begin(), successors(&BB).end());
-
-      // check if the BB has a return instruction, if it does get the function callers and add them to the successors list
-      if (isReturnBB(BB)) {
-        for (User *U : BB.getParent()->users()) {
-          if (isa<Instruction>(U)) {
-            Instruction *Caller = cast<Instruction>(U);
-            Successors.insert(Caller->getParent()->getSingleSuccessor());
+      Todo.insert(&BB);
+      Candidates.insert(&BB);
+      while (Todo.size() != 0) {
+        BasicBlock *Elem = *Todo.begin(); // get the first element
+        for (auto *Succ : successors(Elem)) {
+          if (BBSigs.find(Succ) != BBSigs.end()) {
+            for (auto *Pred : predecessors(Succ)) {
+              if (BBSigs.find(Pred) != BBSigs.end() && Candidates.find(Pred) == Candidates.end()){
+                Todo.insert(Pred);
+                Candidates.insert(Pred);
+              }
+            }
           }
         }
+        Todo.erase(Elem);
       }
-
-      // For each successor count the number of predecessors. If the number of predecessors is 2
-      // return the signature of the successor's first predecessor (i.e. the first neighbor signature).
-      for (auto *Succ : Successors) {
-        if (BBSigs.find(Succ) != BBSigs.end()) {
-          if (hasNPredecessorsOrMore(*Succ, N, BBSigs, BBCalls)) {
-            BasicBlock *Neigh = getFirstPredecessor(*Succ, BBSigs, BBCalls);
-            return BBSigs.find(Neigh)->second;
-          }
-        }
+      if (Candidates.size() > 1) {
+        return BBSigs.find(*Candidates.begin())->second;
       }
 
       return -1;
@@ -325,15 +290,6 @@ struct CFGVerification : public ModulePass {
           return true;
         }
       }
-      // Count the times the BB is called
-      for (auto Pair : BBCalls) {
-        if (Pair.second == &BB) {
-          Count++;
-        }
-        if(Count == N) {
-          return true;
-        }
-      }
       return false;
     }
 
@@ -341,11 +297,9 @@ struct CFGVerification : public ModulePass {
      *
      * @param BBSigs
      * @param NewBBs
-     * For each basic block BB in the original set of basic blocks (BBSigs), find
-     * the CFGVerificationBB created into NewBBs and put it into the function in the
-     * correct position such that NewBB is
+     * 
      */
-    void sortBasicBlocks(const std::map<BasicBlock *, int> &BBSigs, const std::map<int, BasicBlock *> &NewBBs) {
+    void sortBasicBlocks(const std::map<BasicBlock *, int> &BBSigs, const std::map<int, BasicBlock *> &NewBBs, const std::map<Function*, BasicBlock*> &FuncErrBBs) {
       for (auto Pair : BBSigs) { // for each element in the original set of blocks
         int BBSig = Pair.second;
         auto *BB = Pair.first;
@@ -354,6 +308,10 @@ struct CFGVerification : public ModulePass {
           // re-insert the CFGVerificationBB into the function in the right position
           CFGVerificationBB->removeFromParent();
           CFGVerificationBB->insertInto(BB->getParent(), Pair.first);
+
+          IRBuilder<> B(CFGVerificationBB);
+          Value *Cond = &CFGVerificationBB->getInstList().back();
+          B.CreateCondBr(Cond, BB, FuncErrBBs.find(BB->getParent())->second);
 
           // move all the phi instructions from the next BB into the CFGVerificationBB
           while (isa<PHINode>(BB->front())) {
@@ -398,7 +356,10 @@ struct CFGVerification : public ModulePass {
 
       // if the block has a predecessor we use its signature, otherwise the sig = 0
       if (BBSigs.find(Predecessor) != BBSigs.end()) {
-        PredSig = BBSigs.find(Predecessor)->second;
+        if(hasNPredecessorsOrMore(BB, 2, BBSigs, BBCalls)) {
+          PredSig = getNeighborSig(*Predecessor, BBSigs, BBCalls);
+        }
+        else PredSig = BBSigs.find(Predecessor)->second;
       }
 
       // initialize new basic block, add it to the NewBBs and initialize the builder
@@ -433,9 +394,9 @@ struct CFGVerification : public ModulePass {
         B.CreateStore(InstrD, D);
       }
 
-      // compare if the new run-time signature (stored in XorRes) is equal to the signature of the block
+      // compare the new run-time signature (stored in XorRes) with the signature of the block
       Value *Cond = B.CreateCmp(llvm::CmpInst::ICMP_EQ, XorRes, InstrCurSig);
-      B.CreateCondBr(Cond, &BB, &ErrBB);
+      //B.CreateCondBr(Cond, &BB, &ErrBB);
 
     }
 
@@ -462,13 +423,16 @@ struct CFGVerification : public ModulePass {
       // map of signatures of basic blocks and their CFG-verification basic blocks
       std::map<int, BasicBlock *> NewBBs;
 
+      std::map<Function*, BasicBlock*> ErrBBs;
+      
       for (Function &Fn : Md) {
         if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
         //if (!Fn.isDeclarationForLinker() && ((*FuncAnnotations.find(&Fn)).second.startswith("include") || (*FuncAnnotations.find(&Fn)).second.startswith("task"))) {
           // initialize global variables
           auto *IntType = llvm::Type::getInt32Ty(Md.getContext());
-          Value *G = new llvm::GlobalVariable(Md, llvm::Type::getInt32Ty(Md.getContext()), false, llvm::GlobalValue::WeakAnyLinkage, llvm::ConstantInt::get(IntType, 0), "G");
-          Value *D = new llvm::GlobalVariable(Md, llvm::Type::getInt32Ty(Md.getContext()), false, llvm::GlobalValue::WeakAnyLinkage, llvm::ConstantInt::get(IntType, 0), "D");
+
+          //Value *G = new llvm::GlobalVariable(Md, llvm::Type::getInt32Ty(Md.getContext()), false, llvm::GlobalValue::WeakAnyLinkage, llvm::ConstantInt::get(IntType, 0), "G");
+          //Value *D = new llvm::GlobalVariable(Md, llvm::Type::getInt32Ty(Md.getContext()), false, llvm::GlobalValue::WeakAnyLinkage, llvm::ConstantInt::get(IntType, 0), "D");          
 
           int CurSig = BBSigs.find(&Fn.front())->second;
 
@@ -477,8 +441,10 @@ struct CFGVerification : public ModulePass {
           B.SetInsertPoint(&*Fn.front().getFirstInsertionPt());
 
           // backup and update G and D as Fn is an entry function
-          Value *OldG = B.CreateLoad(IntType, G, "BackupG");
-          Value *OldD = B.CreateLoad(IntType, D, "BackupD");
+          //Value *OldG = B.CreateLoad(IntType, G, "BackupG");
+          //Value *OldD = B.CreateLoad(IntType, D, "BackupD");
+          Value *G = B.CreateAlloca(IntType, (llvm::Value *)nullptr, "G");
+          Value *D = B.CreateAlloca(IntType, (llvm::Value *)nullptr, "D");
           Value *InstrG = llvm::ConstantInt::get(IntType, CurSig);
           B.CreateStore(InstrG, G, false);
 
@@ -488,16 +454,6 @@ struct CFGVerification : public ModulePass {
             Value *InstrD =
                 llvm::ConstantInt::get(IntType, CurSig ^ NeighborSig);
             B.CreateStore(InstrD, D);
-          }
-
-          // add the restore of G and D at each function return instruction
-          for (BasicBlock &BB : Fn) {
-            Instruction *Terminator = BB.getTerminator();
-            if (isa<ReturnInst>(Terminator)) {
-              B.SetInsertPoint(Terminator);
-              B.CreateStore(OldG, G);
-              B.CreateStore(OldD, D);
-            }
           }
 
           // add the error basic block to jump to in case of error
@@ -512,12 +468,13 @@ struct CFGVerification : public ModulePass {
           auto CalleeF = ErrBB->getModule()->getOrInsertFunction(
               "SigMismatch_Handler", FunctionType::getVoidTy(Md.getContext()));
           ErrB.CreateCall(CalleeF)->setDebugLoc(ErrB.getCurrentDebugLocation());
-          ErrB.CreateBr(ErrBB);
+          ErrB.CreateUnreachable();
+          ErrBBs.insert(std::pair<Function*, BasicBlock*>(&Fn, ErrBB));
         }
       }
 
       // reorder the basic blocks, fixing predecessors and successors.
-      sortBasicBlocks(BBSigs, NewBBs);
+      sortBasicBlocks(BBSigs, NewBBs, ErrBBs);
 
       persist_compiled_functions(Md, FuncAnnotations);
       return true;

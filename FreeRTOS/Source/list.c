@@ -47,7 +47,7 @@
 * PUBLIC LIST API documented in list.h
 *----------------------------------------------------------*/
 
-__attribute__((annotate("exclude"))) void vListInitialise( List_t * const pxList )
+__attribute__((annotate("include"))) void vListInitialise( List_t * const pxList )
 {
     /* The list structure contains a list item which is used to mark the
      * end of the list.  To initialise the list the list end is inserted
@@ -185,7 +185,7 @@ __attribute__((annotate("include"))) void vListInsert( List_t * const pxList,
 }
 /*-----------------------------------------------------------*/
 
-__attribute__((annotate("exclude"))) UBaseType_t uxListRemove( ListItem_t * const pxItemToRemove )
+__attribute__((annotate("include"))) UBaseType_t uxListRemove( ListItem_t * const pxItemToRemove )
 {
 /* The list item knows which list it is in.  Obtain the list from the list
  * item. */

@@ -272,11 +272,12 @@ struct EDDIVerification : public ModulePass {
         if (isa<Instruction>(V) && V->getType()->isPointerTy()) { 
           Instruction *Operand = cast<Instruction>(V);
           auto Duplicate = DuplicatedInstructionMap.find(Operand);
-          // if the operand has been duplicated we add the consistency check
           if (Duplicate != DuplicatedInstructionMap.end()) {
             Value *Original = Duplicate->first;
             Value *Copy = Duplicate->second;
-            Instruction *TmpLoad = B.CreateLoad(Original->getType(), Original);
+
+            Type *OriginalType = Original->getType();
+            Instruction *TmpLoad = B.CreateLoad(OriginalType, Original);
             Instruction *TmpStore = B.CreateStore(TmpLoad, Copy);
             DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpLoad, TmpLoad));
             DuplicatedInstructionMap.insert(std::pair<Instruction *, Instruction *>(TmpStore, TmpStore));
@@ -357,7 +358,7 @@ struct EDDIVerification : public ModulePass {
       // if the instruction is a binary/unary instruction we need to duplicate it checking for its operands
       else if (isa<BinaryOperator, UnaryInstruction, LoadInst, GetElementPtrInst, CmpInst, PHINode, SelectInst>(I)) {
         // duplicate the instruction
-        Instruction *IClone = cloneInstr(I, DuplicatedInstructionMap);
+        cloneInstr(I, DuplicatedInstructionMap);
 
         // duplicate the operands
         duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
@@ -401,7 +402,6 @@ struct EDDIVerification : public ModulePass {
         CallBase *CInstr = cast<CallBase>(&I);
         Function *Fn = getFunctionDuplicate(CInstr->getCalledFunction());
         if (Fn != NULL) {
-          Function *OriginalFn = CInstr->getCalledFunction();
           std::vector<Value*> args;
           for (Value *Original : CInstr->args()) {
             Value *Copy = Original;
@@ -436,6 +436,7 @@ struct EDDIVerification : public ModulePass {
       return false;
     }
 
+    // TODO duplicate the arguments in a different way: (arg1, arg1_dup, arg2, arg2_dup) -> (arg1, arg2, arg1_dup, arg2_dup)
     Function *duplicateFnArgs(Function &Fn, Module &Md, std::map<Value *, Value *> &DuplicatedInstructionMap) {
       Type *RetType = Fn.getReturnType();
       FunctionType *FnType = Fn.getFunctionType();
@@ -537,7 +538,7 @@ struct EDDIVerification : public ModulePass {
           auto CalleeF = ErrBB->getModule()->getOrInsertFunction(
               "DataCorruption_Handler", FunctionType::getVoidTy(Md.getContext()));
           ErrB.CreateCall(CalleeF)->setDebugLoc(ErrB.getCurrentDebugLocation());
-          ErrB.CreateBr(ErrBB);
+          ErrB.CreateUnreachable();
         }
       }
 

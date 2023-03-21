@@ -1269,7 +1269,7 @@ __attribute__((annotate("include"))) static void prvAddNewTaskToReadyList( TCB_t
 
 #if ( INCLUDE_xTaskDelayUntil == 1 )
 
-    __attribute__((annotate("exclude"))) BaseType_t xTaskDelayUntil( TickType_t * const pxPreviousWakeTime,
+    __attribute__((annotate("include"))) BaseType_t xTaskDelayUntil( TickType_t * const pxPreviousWakeTime,
                                 const TickType_t xTimeIncrement )
     {
         TickType_t xTimeToWake;
@@ -1356,7 +1356,7 @@ __attribute__((annotate("include"))) static void prvAddNewTaskToReadyList( TCB_t
 
 #if ( INCLUDE_vTaskDelay == 1 )
 
-    __attribute__((annotate("exclude"))) void vTaskDelay( const TickType_t xTicksToDelay )
+    __attribute__((annotate("include"))) void vTaskDelay( const TickType_t xTicksToDelay )
     {
         BaseType_t xAlreadyYielded = pdFALSE;
 
@@ -2230,7 +2230,7 @@ __attribute__((annotate("include"))) void vTaskSuspendAll( void )
 #endif /* configUSE_TICKLESS_IDLE */
 /*----------------------------------------------------------*/
 
-__attribute__((annotate("exclude"))) BaseType_t xTaskResumeAll( void )
+__attribute__((annotate("include"))) BaseType_t xTaskResumeAll( void )
 {
     TCB_t * pxTCB = NULL;
     BaseType_t xAlreadyYielded = pdFALSE;
@@ -2746,7 +2746,7 @@ __attribute__((annotate("include"))) BaseType_t xTaskCatchUpTicks( TickType_t xT
 #endif /* INCLUDE_xTaskAbortDelay */
 /*----------------------------------------------------------*/
 
-__attribute__((annotate("exclude"))) BaseType_t xTaskIncrementTick( void )
+__attribute__((annotate("include"))) BaseType_t xTaskIncrementTick( void )
 {
     TCB_t * pxTCB;
     TickType_t xItemValue;
@@ -2893,6 +2893,7 @@ __attribute__((annotate("exclude"))) BaseType_t xTaskIncrementTick( void )
             {
                 if( xYieldPending != pdFALSE )
                 {
+                    //done();
                     xSwitchRequired = pdTRUE;
                 }
                 else
@@ -3676,7 +3677,7 @@ __attribute__((annotate("include"))) static portTASK_FUNCTION( prvIdleTask, pvPa
 #endif /* portUSING_MPU_WRAPPERS */
 /*-----------------------------------------------------------*/
 
-__attribute__((annotate("exclude"))) static void prvInitialiseTaskLists( void )
+__attribute__((annotate("include"))) static void prvInitialiseTaskLists( void )
 {
     UBaseType_t uxPriority;
 

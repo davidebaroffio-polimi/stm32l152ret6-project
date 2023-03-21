@@ -99,11 +99,6 @@ __attribute__((annotate("include"))) int main(void)
   MX_TIM6_Init();
 
   /* USER CODE BEGIN 2 */
-  /*BaseType_t xRet2 = xTaskCreate( vTaskCode2, "Led2", 128, NULL, tskIDLE_PRIORITY + 2 , NULL );
-  BaseType_t xRet1 = xTaskCreate( vTaskCode1, "Led1", 128, NULL, tskIDLE_PRIORITY + 3, NULL );
-  BaseType_t xRet3 = xTaskCreate( vTaskDES, "des", 128*2, NULL, tskIDLE_PRIORITY + 1, NULL );
-  if (xRet1 == pdPASS && xRet2 == pdPASS && xRet3 == pdPASS)
-    vTaskStartScheduler();*/
 
   // Create tasks below
   //      | | |
@@ -290,7 +285,7 @@ __attribute__((annotate("task"))) void vTaskCode1( void * pvParameters )
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 1;
+    const TickType_t xFrequency = 5;
     BaseType_t xWasDelayed;
 
     // Initialise the xLastWakeTime variable with the current time.
@@ -315,7 +310,7 @@ __attribute__((annotate("task"))) void vTaskCode2( void * pvParameters )
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 1;
+    const TickType_t xFrequency = 5;
     BaseType_t xWasDelayed;
 
     // Initialise the xLastWakeTime variable with the current time.
@@ -341,7 +336,7 @@ __attribute__((annotate("task"))) void vTaskDES( void * pvParameters )
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 1;
+    const TickType_t xFrequency = 5;
     BaseType_t xWasDelayed;
 
     // Initialise the xLastWakeTime variable with the current time.
