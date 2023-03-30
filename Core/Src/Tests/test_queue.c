@@ -36,7 +36,7 @@ xQueueOverwriteFromISR         [ ]
 #include <string.h>
 
 #define QUEUE_LENGTH    10
-#define ITEM_SIZE       sizeof( uint64_t )
+#define ITEM_SIZE       sizeof( int )
 
 xQueueHandle globalQueuehandle = 0;
 static StaticQueue_t xStaticQueue;

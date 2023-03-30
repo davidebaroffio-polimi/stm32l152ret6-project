@@ -2240,6 +2240,10 @@ static BaseType_t prvCopyDataToQueue( Queue_t * const pxQueue,
 }
 /*-----------------------------------------------------------*/
 
+__attribute__((annotate("to_duplicate"))) void memcpy_to_duplicate(void *__restrict__ __dest, const void *__restrict__ __src, size_t __n) {
+    memcpy(__dest, __src, __n);
+}
+
 static void prvCopyDataFromQueue( Queue_t * const pxQueue,
                                   void * const pvBuffer )
 {
@@ -2255,8 +2259,8 @@ static void prvCopyDataFromQueue( Queue_t * const pxQueue,
         {
             mtCOVERAGE_TEST_MARKER();
         }
-
-        ( void ) memcpy( ( void * ) pvBuffer, ( void * ) pxQueue->u.xQueue.pcReadFrom, ( size_t ) pxQueue->uxItemSize ); /*lint !e961 !e418 !e9087 MISRA exception as the casts are only redundant for some ports.  Also previous logic ensures a null pointer can only be passed to memcpy() when the count is 0.  Cast to void required by function signature and safe as no alignment requirement and copy length specified in bytes. */
+        ( void ) memcpy_to_duplicate( ( void * ) pvBuffer, ( void * ) pxQueue->u.xQueue.pcReadFrom, ( size_t ) pxQueue->uxItemSize ); /*lint !e961 !e418 !e9087 MISRA exception as the casts are only redundant for some ports.  Also previous logic ensures a null pointer can only be passed to memcpy() when the count is 0.  Cast to void required by function signature and safe as no alignment requirement and copy length specified in bytes. */
+        //( void ) memcpy( ( void * ) pvBuffer, ( void * ) pxQueue->u.xQueue.pcReadFrom, ( size_t ) pxQueue->uxItemSize ); /*lint !e961 !e418 !e9087 MISRA exception as the casts are only redundant for some ports.  Also previous logic ensures a null pointer can only be passed to memcpy() when the count is 0.  Cast to void required by function signature and safe as no alignment requirement and copy length specified in bytes. */
     }
 }
 /*-----------------------------------------------------------*/

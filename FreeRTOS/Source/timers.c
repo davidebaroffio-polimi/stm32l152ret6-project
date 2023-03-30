@@ -775,7 +775,7 @@
      * 
      * Find a way to fix this...
      */
-    __attribute__((annotate("exclude"))) static void prvProcessReceivedCommands( void )
+    __attribute__((annotate("include"))) static void prvProcessReceivedCommands( void )
     {
         DaemonTaskMessage_t xMessage;
         Timer_t * pxTimer;

@@ -53,6 +53,7 @@ _fork
 _execve
 xTimerGenericCommand
 prvTimerTask
+prvProcessReceivedCommands
 prvSampleTimeNow
 prvInsertTimerInActiveList
 prvReloadTimer
@@ -191,6 +192,7 @@ uxStreamBufferGetStreamBufferNumber
 vStreamBufferSetStreamBufferNumber
 ucStreamBufferGetStreamBufferType
 xQueueGenericCreateStatic
+memcpy_to_duplicate
 prvInitialiseNewQueue
 xQueueGenericReset
 xQueueGenericCreate
@@ -421,6 +423,7 @@ _fork_dup
 _execve_dup
 xTimerGenericCommand_dup
 prvTimerTask_dup
+prvProcessReceivedCommands_dup
 prvSampleTimeNow_dup
 prvInsertTimerInActiveList_dup
 prvReloadTimer_dup
@@ -559,6 +562,7 @@ uxStreamBufferGetStreamBufferNumber_dup
 vStreamBufferSetStreamBufferNumber_dup
 ucStreamBufferGetStreamBufferType_dup
 xQueueGenericCreateStatic_dup
+memcpy_to_duplicate_dup
 prvInitialiseNewQueue_dup
 xQueueGenericReset_dup
 xQueueGenericCreate_dup
