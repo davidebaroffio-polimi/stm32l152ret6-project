@@ -1,5 +1,10 @@
 fn_name
 HAL_UART_MspDeInit
+des
+getbit
+ks
+cyfun
+des_init
 vTaskQueueTest1
 vTaskQueueTest2
 vTaskQueueTest3
@@ -159,7 +164,7 @@ vEventGroupSetNumber
 main
 vTaskCode1
 vTaskCode2
-vTaskDES
+benchmark_res
 xStreamBufferGenericCreate
 prvInitialiseNewStreamBuffer
 xStreamBufferGenericCreateStatic
@@ -225,6 +230,7 @@ xQueueIsQueueFullFromISR
 vQueueAddToRegistry
 pcQueueGetName
 vQueueWaitForMessageRestricted
+getbit_ret
 uxListRemove_ret
 done_ret
 _sbrk_ret
@@ -307,6 +313,7 @@ xEventGroupGetBitsFromISR_ret
 xEventGroupSetBitsFromISR_ret
 uxEventGroupGetNumber_ret
 main_ret
+benchmark_res_ret
 xStreamBufferGenericCreate_ret
 xStreamBufferGenericCreateStatic_ret
 xStreamBufferReset_ret
@@ -361,6 +368,11 @@ xQueueIsQueueEmptyFromISR_ret
 xQueueIsQueueFullFromISR_ret
 pcQueueGetName_ret
 HAL_UART_MspDeInit_dup
+des_dup
+getbit_dup
+ks_dup
+cyfun_dup
+des_init_dup
 vTaskQueueTest1_dup
 vTaskQueueTest2_dup
 vTaskQueueTest3_dup
@@ -520,7 +532,7 @@ vEventGroupSetNumber_dup
 main_dup
 vTaskCode1_dup
 vTaskCode2_dup
-vTaskDES_dup
+benchmark_res_dup
 xStreamBufferGenericCreate_dup
 prvInitialiseNewStreamBuffer_dup
 xStreamBufferGenericCreateStatic_dup
@@ -586,6 +598,7 @@ xQueueIsQueueFullFromISR_dup
 vQueueAddToRegistry_dup
 pcQueueGetName_dup
 vQueueWaitForMessageRestricted_dup
+getbit_ret_dup
 uxListRemove_ret_dup
 done_ret_dup
 _sbrk_ret_dup
@@ -668,6 +681,7 @@ xEventGroupGetBitsFromISR_ret_dup
 xEventGroupSetBitsFromISR_ret_dup
 uxEventGroupGetNumber_ret_dup
 main_ret_dup
+benchmark_res_ret_dup
 xStreamBufferGenericCreate_ret_dup
 xStreamBufferGenericCreateStatic_ret_dup
 xStreamBufferReset_ret_dup

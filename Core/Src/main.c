@@ -27,6 +27,7 @@
 #include "test_queue.h"
 #include "test_task.h"
 #include "test_misc.h"
+#include "test_benchmark.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -103,7 +104,7 @@ __attribute__((annotate("include"))) int main(void)
   // Create tasks below
   //      | | |
   //      V V V
-  BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
+  /* BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
   BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL ); 
   BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
   BaseType_t xRet4 = xTaskCreate( vTaskQueueTest4, "queue4", 200, NULL, tskIDLE_PRIORITY + 2, NULL );
@@ -113,7 +114,9 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer1", 200, NULL, tskIDLE_PRIORITY+8, NULL);
 
 
-  if(xRet1 & xRet2 &  xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS) 
+  if(xRet1 & xRet2 &  xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS)  */
+  BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 300, NULL, tskIDLE_PRIORITY + 8, NULL);
+  if (xRet == pdPASS)
     vTaskStartScheduler();
   /* USER CODE END 2 */
 
@@ -328,32 +331,28 @@ __attribute__((annotate("task"))) void vTaskCode2( void * pvParameters )
     }
 }
 
+int benchmark_res(int res) {
+  return res;
+}
+
 /* Task to be created. */
 //__attribute__((annotate("task"))) 
-__attribute__((annotate("task"))) void vTaskDES( void * pvParameters )
+__attribute__((annotate("exclude"))) void vTaskDES( void * pvParameters )
 {
     /* The parameter value is expected to be 1 as 1 is passed in the
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
-    TickType_t xLastWakeTime;
-    const TickType_t xFrequency = 5;
-    BaseType_t xWasDelayed;
 
-    // Initialise the xLastWakeTime variable with the current time.
-    xLastWakeTime = xTaskGetTickCount ();
+    vTaskDelay(100);
+    
     for( ;; )
     {
-      // Wait for the next cycle.
-      xWasDelayed = xTaskDelayUntil( &xLastWakeTime, xFrequency );
-      
-      // Perform action here. xWasDelayed value can be used to determine
-      // whether a deadline was missed if the code here took too long.
-      //HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
-      HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
-      if (xWasDelayed) {
-        testDES();
-        HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
+      int start = xTaskGetTickCount();
+      for (int i=0; i<1000; i++) {
+        des_init();
       }
+      int end = xTaskGetTickCount();
+      benchmark_res(end-start);
     }
 }
 

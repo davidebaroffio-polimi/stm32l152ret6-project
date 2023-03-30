@@ -246,6 +246,35 @@ struct EDDIVerification : public ModulePass {
                 CmpInstructions.push_back(CmpInstr);
               }
             }
+            // if the operand is an array we have to compare all its elements
+            else if (Original->getType()->isArrayTy()) {
+              
+              int arraysize = Original->getType()->getArrayNumElements();
+
+              int addressSpace;
+              if (isa<AllocaInst>(Original)) {
+                addressSpace = cast<AllocaInst>(Original)->getAddressSpace();
+              }
+              else if (isa<LoadInst>(Original)) {
+                addressSpace = cast<AllocaInst>(cast<LoadInst>(Original)->getPointerOperand())->getAddressSpace();
+              }
+
+              for (int i=0; i<arraysize; i++) {
+                Value *OriginalElem = B.CreateExtractValue(Original, i);
+                Value *CopyElem = B.CreateExtractValue(Copy, i);
+                DuplicatedInstructionMap.insert(std::pair<Value*, Value*>(OriginalElem, CopyElem));
+                
+                if (OriginalElem->getType()->isPointerTy()) {
+                  Value *CmpInstr = comparePtrs(*OriginalElem, *CopyElem, B);
+                  if (CmpInstr != NULL) {
+                    CmpInstructions.push_back(CmpInstr);
+                  }
+                }
+                else {
+                  CmpInstructions.push_back(B.CreateCmp(CmpInst::ICMP_EQ, OriginalElem, CopyElem));
+                }
+              }
+            }
             // else we just add a compare
             else {
               CmpInstructions.push_back(B.CreateCmp(CmpInst::ICMP_EQ, Original, Copy));
@@ -344,6 +373,7 @@ struct EDDIVerification : public ModulePass {
      * @returns 1 if the instruction has to be removed, 0 otherwise
     */
     int duplicateInstruction (Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap, BasicBlock &ErrBB) {
+      //errs() << I << "\n";
       if (isValueDuplicated(DuplicatedInstructionMap, I)) {
         return 0;
       }
