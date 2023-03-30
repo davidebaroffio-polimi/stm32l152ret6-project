@@ -421,37 +421,49 @@ struct EDDIVerification : public ModulePass {
       }
 
       else if(isa<CallBase>(I)) {
-        // duplicate the operands
-        duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
-
-        // add consistency checks on I
-        addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
-
-        // get the function with the duplicated signature, if it exists
-        IRBuilder<> B(I.getNextNonDebugInstruction());
         CallBase *CInstr = cast<CallBase>(&I);
-        Function *Fn = getFunctionDuplicate(CInstr->getCalledFunction());
-        if (Fn != NULL) {
-          std::vector<Value*> args;
-          for (Value *Original : CInstr->args()) {
-            Value *Copy = Original;
-            // see if Original has a copy
-            if (DuplicatedInstructionMap.find(cast<Instruction>(Original)) != DuplicatedInstructionMap.end()) {
-              Copy = DuplicatedInstructionMap.find(cast<Instruction>(Original))->second;
-            }
-            args.push_back(Original);
-            args.push_back(Copy);
-          }
+        if ((FuncAnnotations.find(CInstr->getCalledFunction()))->second.startswith("to_duplicate")) {
+        //if ((*FuncAnnotations.find(&CInstr->getCalledFunction())).second.startswith("to_duplicate")) {  
+          cloneInstr(*CInstr, DuplicatedInstructionMap);
           
-          if (Fn != CInstr->getCalledFunction()){
-            Instruction *NewCInstr = B.CreateCall(Fn->getFunctionType(), Fn, args);
-            res = 1;
-            //fixFuncValsPassedByReference(*NewCInstr, DuplicatedInstructionMap, B);
-            CInstr->replaceNonMetadataUsesWith(NewCInstr);
-          }
+          // duplicate the operands
+          duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
+
+          // add consistency checks on I
+          addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
         }
         else {
-          fixFuncValsPassedByReference(*CInstr, DuplicatedInstructionMap, B);
+          // duplicate the operands
+          duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
+
+          // add consistency checks on I
+          addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+
+          // get the function with the duplicated signature, if it exists
+          IRBuilder<> B(I.getNextNonDebugInstruction());
+          Function *Fn = getFunctionDuplicate(CInstr->getCalledFunction());
+          if (Fn != NULL) {
+            std::vector<Value*> args;
+            for (Value *Original : CInstr->args()) {
+              Value *Copy = Original;
+              // see if Original has a copy
+              if (DuplicatedInstructionMap.find(cast<Instruction>(Original)) != DuplicatedInstructionMap.end()) {
+                Copy = DuplicatedInstructionMap.find(cast<Instruction>(Original))->second;
+              }
+              args.push_back(Original);
+              args.push_back(Copy);
+            }
+            
+            if (Fn != CInstr->getCalledFunction()){
+              Instruction *NewCInstr = B.CreateCall(Fn->getFunctionType(), Fn, args);
+              res = 1;
+              //fixFuncValsPassedByReference(*NewCInstr, DuplicatedInstructionMap, B);
+              CInstr->replaceNonMetadataUsesWith(NewCInstr);
+            }
+          }
+          else {
+            fixFuncValsPassedByReference(*CInstr, DuplicatedInstructionMap, B);
+          }
         }
       }
       return res;
