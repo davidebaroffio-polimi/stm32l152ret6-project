@@ -32,7 +32,13 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+/**
+ * The scope defines what tasks are going to be compiled.
+ * The currently defined scopes are:
+ * - 0: microbenchmarks
+ * - 1: DES performance benchmark
+*/
+#define SCOPE 0
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -104,7 +110,8 @@ __attribute__((annotate("include"))) int main(void)
   // Create tasks below
   //      | | |
   //      V V V
-  /* BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
+#if SCOPE == 0 // microbenchmarks
+  BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
   BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL ); 
   BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
   BaseType_t xRet4 = xTaskCreate( vTaskQueueTest4, "queue4", 200, NULL, tskIDLE_PRIORITY + 2, NULL );
@@ -112,11 +119,14 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 200, NULL, tskIDLE_PRIORITY+7, NULL);
   BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 200, NULL, tskIDLE_PRIORITY+6, NULL);
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer1", 200, NULL, tskIDLE_PRIORITY+8, NULL);
+  if(xRet1 & xRet2 &  xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS) 
 
-
-  if(xRet1 & xRet2 &  xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS)  */
+#elif SCOPE == 1 // DES benchmark
   BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 300, NULL, tskIDLE_PRIORITY + 8, NULL);
   if (xRet == pdPASS)
+  
+#endif
+
     vTaskStartScheduler();
   /* USER CODE END 2 */
 
