@@ -10,6 +10,7 @@
 #include "llvm/Transforms/Utils/Cloning.h"
 #include <map>
 #include <list>
+#include <array>
 #include <unordered_set>
 #include <queue>
 #include <iostream>
@@ -147,6 +148,20 @@ struct EDDIVerification : public ModulePass {
           Instruction *Operand = cast<Instruction>(V);
           if(!isValueDuplicated(DuplicatedInstructionMap, *Operand))
             duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
+        }
+        else if (isa<GEPOperator>(V) && isa<ConstantExpr>(V)) {
+          if (IClone != NULL) {
+            GEPOperator *GEPOperand = cast<GEPOperator>(IClone->getOperand(J));
+            Value *PtrOperand = GEPOperand->getPointerOperand();
+            if (DuplicatedInstructionMap.find(PtrOperand) != DuplicatedInstructionMap.end()) {
+              std::vector<Value*> indices;
+              for (auto &Idx : GEPOperand->indices()) {
+                indices.push_back(Idx);
+              }
+              Constant *CloneGEPOperand = cast<ConstantExpr>(GEPOperand)->getInBoundsGetElementPtr(GEPOperand->getSourceElementType(), cast<Constant>(DuplicatedInstructionMap.find(PtrOperand)->second), ArrayRef<Value*>(indices));
+              IClone->setOperand(J, CloneGEPOperand);
+            }
+          }
         }
 
         if (IClone != NULL) {
@@ -343,9 +358,28 @@ struct EDDIVerification : public ModulePass {
 
     void duplicateGlobals (Module &Md, std::map<Value *, Value *> &DuplicatedInstructionMap) {
       for (GlobalVariable &GV : Md.globals()) {
-        if (! (GV.getType()->isFunctionTy() || GV.isConstant() || GV.getValueType()->isStructTy() || GV.getValueType()->isArrayTy() || GV.getValueType()->isOpaquePointerTy())
-            && ! GV.getName().endswith("_dup")) {
-              
+        /**
+         * The global variable is duplicated if all the following hold:
+         * - It is not a function
+         * - It is not constant (i.e. read only)
+         * - It is not a struct
+         * - Doesn't end with "_dup" (i.e. has already been duplicated)
+         * - Has internal linkage and either:
+         *        a) It is not an array
+         *        b) It is an array but its elements are neither structs nor arrays
+        */
+       bool isFunction = GV.getType()->isFunctionTy();
+       bool isConstant = GV.isConstant();
+       bool isStruct = GV.getValueType()->isStructTy();
+       bool isArray = GV.getValueType()->isArrayTy();
+       bool isPointer = GV.getValueType()->isOpaquePointerTy();
+       bool endsWithDup = GV.getName().endswith("_dup");
+       bool hasInternalLinkage = GV.hasInternalLinkage();
+
+        if (! (isFunction || isConstant || isStruct || endsWithDup) // is not function, constant, struct and does not end with _dup
+            && ((hasInternalLinkage && (!isArray || (isArray && !cast<ArrayType>(GV.getValueType())->getArrayElementType()->isAggregateType() ))) // has internal linkage and is not an array, or is an array but the element type is not aggregate
+                || !(isArray || isPointer)) // if it does not have internal linkage, it is not an array or a pointer
+            ) {
           Constant *Initializer = NULL;
           if (GV.hasInitializer()) {
             Initializer = GV.getInitializer();

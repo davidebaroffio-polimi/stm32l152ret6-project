@@ -35,10 +35,13 @@
 /**
  * The scope defines what tasks are going to be compiled.
  * The currently defined scopes are:
- * - 0: microbenchmarks
- * - 1: DES performance benchmark
+ * - 0: no benchmarks
+ * - 1: Microbenchmarks
+ * - 2: DES performance benchmark
+ * - 3: MatMult performance benchmark
 */
-#define SCOPE 0
+#define SCOPE 1
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -67,6 +70,7 @@ static void MX_TIM6_Init(void);
 void vTaskCode1( void * pvParameters );
 void vTaskCode2( void * pvParameters );
 void vTaskDES( void * pvParameters );
+void vTaskMM(void * pvParameters);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -110,7 +114,7 @@ __attribute__((annotate("include"))) int main(void)
   // Create tasks below
   //      | | |
   //      V V V
-#if SCOPE == 0 // microbenchmarks
+#if SCOPE == 1 // microbenchmarks
   BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
   BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL ); 
   BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
@@ -121,10 +125,13 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer1", 200, NULL, tskIDLE_PRIORITY+8, NULL);
   if(xRet1 & xRet2 &  xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS) 
 
-#elif SCOPE == 1 // DES benchmark
+#elif SCOPE == 2 // DES benchmark
   BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 300, NULL, tskIDLE_PRIORITY + 8, NULL);
   if (xRet == pdPASS)
-  
+
+#elif SCOPE == 3 // MatMult benchmark
+  BaseType_t xRet = xTaskCreate(vTaskMM, "benchmark", 300, NULL, tskIDLE_PRIORITY + 8, NULL);
+  if (xRet == pdPASS)
 #endif
 
     vTaskStartScheduler();
@@ -346,7 +353,6 @@ int benchmark_res(int res) {
 }
 
 /* Task to be created. */
-//__attribute__((annotate("task"))) 
 __attribute__((annotate("exclude"))) void vTaskDES( void * pvParameters )
 {
     /* The parameter value is expected to be 1 as 1 is passed in the
@@ -360,6 +366,26 @@ __attribute__((annotate("exclude"))) void vTaskDES( void * pvParameters )
       int start = xTaskGetTickCount();
       for (int i=0; i<1000; i++) {
         des_init();
+      }
+      int end = xTaskGetTickCount();
+      benchmark_res(end-start);
+    }
+}
+
+/* Task to be created. */
+__attribute__((annotate("exclude"))) void vTaskMM( void * pvParameters )
+{
+    /* The parameter value is expected to be 1 as 1 is passed in the
+    pvParameters value in the call to xTaskCreate() below. */
+    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
+
+    vTaskDelay(100);
+    
+    for( ;; )
+    {
+      int start = xTaskGetTickCount();
+      for (int i=0; i<250; i++) {
+        mm_init();
       }
       int end = xTaskGetTickCount();
       benchmark_res(end-start);
