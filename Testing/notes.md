@@ -1,5 +1,5 @@
 # TODO
-- [x] Fix static global variables (only fixed pointers and non-nested arrays)
+- [x] Fix static global variables (fixed only pointers and non-nested arrays)
 
 - [ ] Implement RASM
 
