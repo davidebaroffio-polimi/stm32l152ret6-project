@@ -1,8 +1,11 @@
 fn_name
+benchmark_res
+_exit
 HAL_UART_MspDeInit
 vTaskQueueTest1
 vTaskQueueTest2
 vTaskQueueTest3
+xTaskResumeAll
 vTaskQueueTest4
 vListInitialise
 vListInitialiseItem
@@ -11,7 +14,6 @@ vListInsert
 uxListRemove
 Incorrect_Result
 done
-SystemInit
 SystemCoreClockUpdate
 vTaskUseless
 fnTest1
@@ -35,6 +37,9 @@ DebugMon_Handler
 PendSV_Handler
 SysTick_Handler
 des
+xTimerCreateStatic
+xTimerGetPeriod
+xTimerGetTimerDaemonTaskHandle
 getbit
 ks
 cyfun
@@ -42,7 +47,6 @@ des_init
 initialise_monitor_handles
 _getpid
 _kill
-_exit
 _read
 _write
 _close
@@ -72,9 +76,7 @@ prvCheckForValidListAndQueue
 vApplicationGetTimerTaskMemory
 xTimerCreate
 prvInitialiseNewTimer
-xTimerCreateStatic
-xTimerGetTimerDaemonTaskHandle
-xTimerGetPeriod
+prvAddNewTaskToReadyList
 vTimerSetReloadMode
 uxTimerGetReloadMode
 xTimerGetExpiryTime
@@ -102,7 +104,6 @@ xTaskResumeFromISR
 vTaskStartScheduler
 vTaskEndScheduler
 vTaskSuspendAll
-xTaskResumeAll
 xTaskGetTickCount
 xTaskGetTickCountFromISR
 uxTaskGetNumberOfTasks
@@ -139,7 +140,11 @@ vTaskGenericNotifyGiveFromISR
 xTaskGenericNotifyStateClear
 ulTaskGenericNotifyValueClear
 prvInitialiseNewTask
-prvAddNewTaskToReadyList
+uxTaskGetStackHighWaterMark_ret
+xTaskGetCurrentTaskHandle_ret
+xTaskGetSchedulerState_ret
+xTaskPriorityInherit_ret
+xTaskPriorityDisinherit_ret
 prvInitialiseTaskLists
 prvTaskIsTaskSuspended
 prvIdleTask
@@ -172,7 +177,6 @@ vEventGroupSetNumber
 main
 vTaskCode1
 vTaskCode2
-benchmark_res
 xStreamBufferGenericCreate
 prvInitialiseNewStreamBuffer
 xStreamBufferGenericCreateStatic
@@ -203,12 +207,13 @@ memcpy_to_duplicate
 prvInitialiseNewQueue
 xQueueGenericReset
 xQueueGenericCreate
-xQueueCreateMutex
 prvInitialiseMutex
+xQueueCreateMutex
 xQueueGenericSend
 prvCopyDataToQueue
 prvIsQueueFull
 prvUnlockQueue
+prvGetDisinheritPriorityAfterTimeout_dup
 xQueueCreateMutexStatic
 xQueueGetMutexHolder
 xQueueGetMutexHolderFromISR
@@ -295,11 +300,6 @@ xTaskIncrementTick_ret
 xTaskRemoveFromEventList_ret
 xTaskCheckForTimeOut_ret
 uxTaskGetTaskNumber_ret
-uxTaskGetStackHighWaterMark_ret
-xTaskGetCurrentTaskHandle_ret
-xTaskGetSchedulerState_ret
-xTaskPriorityInherit_ret
-xTaskPriorityDisinherit_ret
 uxTaskResetEventItemValue_ret
 pvTaskIncrementMutexHeldCount_ret
 ulTaskGenericNotifyTake_ret
@@ -389,7 +389,6 @@ vListInsert_dup
 uxListRemove_dup
 Incorrect_Result_dup
 done_dup
-SystemInit_dup
 SystemCoreClockUpdate_dup
 vTaskUseless_dup
 fnTest1_dup
@@ -451,8 +450,8 @@ vApplicationGetTimerTaskMemory_dup
 xTimerCreate_dup
 prvInitialiseNewTimer_dup
 xTimerCreateStatic_dup
-xTimerGetTimerDaemonTaskHandle_dup
 xTimerGetPeriod_dup
+xTimerGetTimerDaemonTaskHandle_dup
 vTimerSetReloadMode_dup
 uxTimerGetReloadMode_dup
 xTimerGetExpiryTime_dup
@@ -540,8 +539,8 @@ xEventGroupWaitBits_dup
 prvTestWaitCondition_dup
 xEventGroupClearBits_dup
 xEventGroupClearBitsFromISR_dup
-vEventGroupClearBitsCallback_dup
 xEventGroupGetBitsFromISR_dup
+vEventGroupClearBitsCallback_dup
 vEventGroupDelete_dup
 vEventGroupSetBitsCallback_dup
 xEventGroupSetBitsFromISR_dup
@@ -581,8 +580,8 @@ memcpy_to_duplicate_dup
 prvInitialiseNewQueue_dup
 xQueueGenericReset_dup
 xQueueGenericCreate_dup
-xQueueCreateMutex_dup
 prvInitialiseMutex_dup
+xQueueCreateMutex_dup
 xQueueGenericSend_dup
 prvCopyDataToQueue_dup
 prvIsQueueFull_dup
@@ -594,7 +593,6 @@ xQueueGiveMutexRecursive_dup
 xQueueTakeMutexRecursive_dup
 xQueueSemaphoreTake_dup
 prvIsQueueEmpty_dup
-prvGetDisinheritPriorityAfterTimeout_dup
 xQueueCreateCountingSemaphoreStatic_dup
 xQueueCreateCountingSemaphore_dup
 xQueueGenericSendFromISR_dup

@@ -3104,6 +3104,18 @@ TaskHandle_t pvTaskIncrementMutexHeldCount( void ) PRIVILEGED_FUNCTION;
 void vTaskInternalSetTimeOutState( TimeOut_t * const pxTimeOut ) PRIVILEGED_FUNCTION;
 
 
+#ifdef configINTRA_FUNCTION_CFC
+    extern int32_t iRuntmSig;
+    extern int32_t iAdjstSig;
+    /* Store the current runtime signature and the adjusting runtime signature in the current task TCB*/
+    void vBackupSig(void);
+
+    /* Restore the runtime signature and the adjusting runtime signature from the current task TCB*/
+    void vRestoreSig(void);
+
+    void vBackupRestoreCallVoidFunction(void (*funcToCall)());
+#endif
+
 /* *INDENT-OFF* */
 #ifdef __cplusplus
     }

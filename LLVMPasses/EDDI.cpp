@@ -19,14 +19,22 @@ using namespace llvm;
 
 #define DEBUG_TYPE "eddi_verification"
 
+/**
+ * - 0: EDDI (Add checks at every basic block)
+ * - 1: FDSC (Add checks only at basic blocks with more than one predecessor)  
+ */
+#define SELECTIVE_CHECKING 0
+
 namespace {
-struct EDDIVerification : public ModulePass {
+struct EDDI : public ModulePass {
   static char ID; // Pass identification, replacement for typeid
-  EDDIVerification() : ModulePass(ID) { }
+  EDDI() : ModulePass(ID) { }
 
   private:
 
+    // Given a Use U, it returns true if the instruction is a PHI instruction
     static bool IsNotAPHINode (Use &U){return !isa<PHINode>(U.getUser());}
+
     /**
      * TODO This function supports only one annotation for each function, multiple annotations are discarded, perhaps I can fix this lol
      * @param Md The module where to look for the annotations
@@ -64,10 +72,11 @@ struct EDDIVerification : public ModulePass {
     }
 
     /**
+     * Determines whether a instruction &I is used by store instructions different than &Use
      * @param I is the operand that we want to check whether is used by store
      * @param Use is the instruction that has I as operand
     */
-    int is_used_by_store(Instruction &I, Instruction &Use) {
+    int isUsedByStore(Instruction &I, Instruction &Use) {
       BasicBlock *BB = I.getParent();
       /* get I users and check whether the BB of I is in the successors of the user */
       for (User *U : I.users()) {
@@ -96,21 +105,21 @@ struct EDDIVerification : public ModulePass {
       return 0;
     }
 
-    void persist_compiled_functions(Module &Md, std::map<Function*, StringRef> &FuncAnnotations) {
+    std::set<Function*> CompiledFuncs;
+    // Inserts the names of the compiled functions into a csv file
+    void persistCompiledFunctions() {
       std::ofstream file;
-      //llvm::raw_fd_ostream file("compiled_functions.csv", std::error_code(), llvm::sys::fs::OF_Append); // CHECK IF THIS WORK
       file.open("compiled_eddi_functions.csv");
       file << "fn_name\n";
-      for (Function &Fn : Md) {
-        if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
-          file << Fn.getName().str() << "\n";
-        }
+      for (Function *Fn : CompiledFuncs) {
+        file << Fn->getName().str() << "\n";
       }
       file.close();
     }
 
     /**
-     * Clones instruction `I` and adds the pair <I, IClone> to DuplicatedInstructionMap
+     * Clones instruction `I` and adds the pair <I, IClone> to DuplicatedInstructionMap, 
+     * inserting the clone right after the original.
     */
     Instruction* cloneInstr(Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap) {
       Instruction *IClone = I.clone();
@@ -141,18 +150,20 @@ struct EDDIVerification : public ModulePass {
       for (Value *V : I.operand_values()) {
         LLVM_DEBUG(dbgs() << "Found operand: " << V << "\n\tisa<Instruction>: " << isa<Instruction>(V) << "\n");
 
-
         // if the operand has not been duplicated we need to duplicate it
-
         if (isa<Instruction>(V)) {
           Instruction *Operand = cast<Instruction>(V);
           if(!isValueDuplicated(DuplicatedInstructionMap, *Operand))
             duplicateInstruction(*Operand, DuplicatedInstructionMap, ErrBB);
         }
+        // It may happen that we have a GEP as inline operand of a instruction. The operands
+        // of the GEP are not duplicated leading to errors, so we manually clone of the GEP 
+        // for the clone of the original instruction.
         else if (isa<GEPOperator>(V) && isa<ConstantExpr>(V)) {
           if (IClone != NULL) {
             GEPOperator *GEPOperand = cast<GEPOperator>(IClone->getOperand(J));
             Value *PtrOperand = GEPOperand->getPointerOperand();
+            // update the duplicate GEP operator using the duplicate of the pointer operand
             if (DuplicatedInstructionMap.find(PtrOperand) != DuplicatedInstructionMap.end()) {
               std::vector<Value*> indices;
               for (auto &Idx : GEPOperand->indices()) {
@@ -174,6 +185,9 @@ struct EDDIVerification : public ModulePass {
       }
     }
 
+    // recursively follow store instructions to find the pointer final value, 
+    // if the value cannot be found (e.g. when the pointer is passed as function argument)
+    // we return NULL.
     Value* getPtrFinalValue(Value &V) {
       Value *res = NULL;
 
@@ -199,6 +213,8 @@ struct EDDIVerification : public ModulePass {
       return res;
     }
 
+    // Follows the pointers V1 and V2 using getPtrFinalValue() and adds a compare instruction
+    // using the IRBuilder B.
     Value* comparePtrs(Value &V1, Value &V2, IRBuilder<> &B) {
       /**
        * synthax `store val, ptr`
@@ -234,19 +250,19 @@ struct EDDIVerification : public ModulePass {
       BasicBlock *VerificationBB = BasicBlock::Create(I.getContext(), "VerificationBB", I.getParent()->getParent(), I.getParent());
       I.getParent()->replaceUsesWithIf(VerificationBB, IsNotAPHINode);
       IRBuilder<> B(VerificationBB);
-
-      int num_NotUsedByStore = 0;
       
-      // add compare for each operand
+      // add a comparison for each operand
       for (Value *V : I.operand_values()) {
+        // we compare the operands if they are instructions
         if (isa<Instruction>(V)) { 
-
           // get the duplicate of the operand
           Instruction *Operand = cast<Instruction>(V);
-          if (Operand->getType()->isPointerTy() && !is_used_by_store(*Operand, I)) {
-            num_NotUsedByStore++;
+
+          // If the operand is a pointer and is not used by any store, we skip the operand
+          if (Operand->getType()->isPointerTy() && !isUsedByStore(*Operand, I)) {
             continue;
           }
+
           auto Duplicate = DuplicatedInstructionMap.find(Operand);
 
           // if the duplicate exists we perform a compare
@@ -265,14 +281,6 @@ struct EDDIVerification : public ModulePass {
             else if (Original->getType()->isArrayTy()) {
               
               int arraysize = Original->getType()->getArrayNumElements();
-
-              int addressSpace;
-              if (isa<AllocaInst>(Original)) {
-                addressSpace = cast<AllocaInst>(Original)->getAddressSpace();
-              }
-              else if (isa<LoadInst>(Original)) {
-                addressSpace = cast<AllocaInst>(cast<LoadInst>(Original)->getPointerOperand())->getAddressSpace();
-              }
 
               for (int i=0; i<arraysize; i++) {
                 Value *OriginalElem = B.CreateExtractValue(Original, i);
@@ -298,6 +306,7 @@ struct EDDIVerification : public ModulePass {
         }
       }
 
+      // if in the end we have a set of compare instructions, we check that all of them are true
       if(!CmpInstructions.empty()) {
         // all comparisons must be true
         Value *AndInstr = B.CreateAnd(CmpInstructions);
@@ -309,6 +318,12 @@ struct EDDIVerification : public ModulePass {
       }
     }
 
+    // Given an instruction, loads and stores the pointers passed to the instruction.
+    // This is useful in the case I is a CallBase, since the function called might not
+    // be in the compilation unit, and the function called may modify the content of the 
+    // pointer passed as argument. 
+    // This function has the objective of synchronize pointers after some non-duplicated
+    // instruction execution.
     void fixFuncValsPassedByReference(Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap, IRBuilder<> &B) {
       int numOps = I.getNumOperands();
       for (int i = 0; i<numOps; i++) {
@@ -330,30 +345,21 @@ struct EDDIVerification : public ModulePass {
       }
     }
 
+    // Given Fn, it returns the version of the function with duplicated arguments, or the 
+    // function Fn itself if it is already the version with duplicated arguments
     Function *getFunctionDuplicate(Function *Fn) {
+      // If Fn ends with "_dup" we have already the duplicated function.
+      // If Fn is NULL, it means that we don't have a duplicate
       if (Fn == NULL || Fn->getName().endswith("_dup")){
         return Fn;
       }
 
+      // Otherwise, we try to get the "_dup" version or the "_ret_dup" version
       Function *FnDup = Fn->getParent()->getFunction(Fn->getName().str() + "_dup");
       if (FnDup == NULL) {
         FnDup = Fn->getParent()->getFunction(Fn->getName().str() + "_ret_dup");
       }
       return FnDup;
-    }
-
-    bool hasGlobalOperand (Instruction &I) {
-      Value *Op = NULL;
-      if (isa<StoreInst>(I)) {
-        Op = cast<StoreInst>(I).getPointerOperand();
-      }
-      else if (isa<AtomicRMWInst>(I)) {
-        Op = cast<AtomicRMWInst>(I).getPointerOperand();
-      }
-      else if (isa<AtomicCmpXchgInst>(I)) {
-        Op = cast<AtomicCmpXchgInst>(I).getPointerOperand();
-      }
-      return Op != NULL && isa<GlobalVariable>(Op);
     }
 
     void duplicateGlobals (Module &Md, std::map<Value *, Value *> &DuplicatedInstructionMap) {
@@ -398,16 +404,22 @@ struct EDDIVerification : public ModulePass {
                                         GV.isExternallyInitialized()
                                         );
           GVCopy->setAlignment(GV.getAlign());
+          // Save the duplicated global so that the duplicate can be used as operand
+          // of other duplicated instructions
           DuplicatedInstructionMap.insert(std::pair<Value*, Value*>(&GV, GVCopy));
         }
       }
     }
 
     /**
-     * @returns 1 if the instruction has to be removed, 0 otherwise
+     * Performs a duplication of the instruction I. Performing the following operations
+     * depending on the class of I:
+     * - Clone the instruction;
+     * - Duplicate the instruction operands;
+     * - Add consistency checks on the operands (if I is a synchronization point).
+     * @returns 1 if the cloned instruction has to be removed, 0 otherwise
     */
     int duplicateInstruction (Instruction &I, std::map<Value *, Value *> &DuplicatedInstructionMap, BasicBlock &ErrBB) {
-      //errs() << I << "\n";
       if (isValueDuplicated(DuplicatedInstructionMap, I)) {
         return 0;
       }
@@ -436,8 +448,10 @@ struct EDDIVerification : public ModulePass {
         duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
         // add consistency checks on I
-        addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
-
+        #if (SELECTIVE_CHECKING == 1)
+        if (I.getParent()->hasNPredecessorsOrMore(2)) 
+        #endif
+          addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
         // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
         if (IClone->isIdenticalTo(&I)) {
           IClone->eraseFromParent();
@@ -451,31 +465,46 @@ struct EDDIVerification : public ModulePass {
         duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
         // add consistency checks on I
-        addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+        #if (SELECTIVE_CHECKING == 1)
+        if (I.getParent()->hasNPredecessorsOrMore(2)) 
+        #endif
+          addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
       }
 
+      // if the istruction is a call, we duplicate the operands and add consistency checks
       else if(isa<CallBase>(I)) {
         CallBase *CInstr = cast<CallBase>(&I);
-        if ((FuncAnnotations.find(CInstr->getCalledFunction()))->second.startswith("to_duplicate")) {
-        //if ((*FuncAnnotations.find(&CInstr->getCalledFunction())).second.startswith("to_duplicate")) {  
+        // there are some instructions that can be annotated with "to_duplicate" in order to tell the pass
+        // to duplicate the function call.
+        if ((FuncAnnotations.find(CInstr->getCalledFunction()) != FuncAnnotations.end() && (*FuncAnnotations.find(CInstr->getCalledFunction())).second.startswith("to_duplicate"))) {
+        //if ((FuncAnnotations.find(CInstr->getCalledFunction()))->second.startswith("to_duplicate")) {
+          errs() << CInstr->getCalledFunction()->getName() << "\n";
+          // duplicate the instruction
           cloneInstr(*CInstr, DuplicatedInstructionMap);
           
           // duplicate the operands
           duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
           // add consistency checks on I
-          addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+          #if (SELECTIVE_CHECKING == 1)
+          if (I.getParent()->hasNPredecessorsOrMore(2)) 
+          #endif
+            addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
         }
         else {
           // duplicate the operands
           duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
           // add consistency checks on I
-          addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+          #if (SELECTIVE_CHECKING == 1)
+          if (I.getParent()->hasNPredecessorsOrMore(2)) 
+          #endif
+            addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
 
           // get the function with the duplicated signature, if it exists
           IRBuilder<> B(I.getNextNonDebugInstruction());
           Function *Fn = getFunctionDuplicate(CInstr->getCalledFunction());
+          // if the _dup function exists, we substitute the call instruction with a call to the function with duplicated arguments
           if (Fn != NULL) {
             std::vector<Value*> args;
             for (Value *Original : CInstr->args()) {
@@ -491,7 +520,6 @@ struct EDDIVerification : public ModulePass {
             if (Fn != CInstr->getCalledFunction()){
               Instruction *NewCInstr = B.CreateCall(Fn->getFunctionType(), Fn, args);
               res = 1;
-              //fixFuncValsPassedByReference(*NewCInstr, DuplicatedInstructionMap, B);
               CInstr->replaceNonMetadataUsesWith(NewCInstr);
             }
           }
@@ -503,6 +531,9 @@ struct EDDIVerification : public ModulePass {
       return res;
     }
 
+    /**
+     * @returns True if the value V is present in the DuplicatedInstructionMap either as a key or as value
+    */
     bool isValueDuplicated(std::map<Value *, Value *> &DuplicatedInstructionMap, Instruction &V) {
       for (auto Elem : DuplicatedInstructionMap) {
         if (Elem.first == &V || Elem.second == &V) {
@@ -512,7 +543,7 @@ struct EDDIVerification : public ModulePass {
       return false;
     }
 
-    // TODO duplicate the arguments in a different way: (arg1, arg1_dup, arg2, arg2_dup) -> (arg1, arg2, arg1_dup, arg2_dup)
+    // TODO (optimization) duplicate the arguments in a different way: (arg1, arg1_dup, arg2, arg2_dup) -> (arg1, arg2, arg1_dup, arg2_dup)
     Function *duplicateFnArgs(Function &Fn, Module &Md, std::map<Value *, Value *> &DuplicatedInstructionMap) {
       Type *RetType = Fn.getReturnType();
       FunctionType *FnType = Fn.getFunctionType();
@@ -560,35 +591,39 @@ struct EDDIVerification : public ModulePass {
       std::list<Function*> FnList;
       std::set<Function*> DuplicatedFns;
 
+      // first store the instructions to compile in the current module
       for (Function &Fn : Md) {
-          if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
-            FnList.push_back(&Fn);
-          }
+        if (!Fn.getBasicBlockList().empty() && (FuncAnnotations.find(&Fn) == FuncAnnotations.end() || !(*FuncAnnotations.find(&Fn)).second.startswith("exclude"))) {
+          FnList.push_back(&Fn);
+        }
       }
-
+      // then duplicate the function arguments using FnList populated earlier
       for (Function *Fn : FnList) {
           Function *newFn = duplicateFnArgs(*Fn, Md, DuplicatedInstructionMap);
           DuplicatedFns.insert(newFn);
       }
 
+      // list of duplicated instructions to remove since they are equal to the original
       std::list<Instruction*> InstructionsToRemove;
 
       for (Function &Fn : Md) {
-        if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
-          LLVM_DEBUG(dbgs() << Fn.getName() << "\n");
+        if (!Fn.getBasicBlockList().empty() && (FuncAnnotations.find(&Fn) == FuncAnnotations.end() || !(*FuncAnnotations.find(&Fn)).second.startswith("exclude"))) {
+          CompiledFuncs.insert(&Fn);
           BasicBlock *ErrBB = BasicBlock::Create(Fn.getContext(), "ErrBB", &Fn);
-
-          // if the function is a duplicated one
+ 
+          // If the function is a duplicated one, we need to 
+          // iterate over the function arguments and duplicate 
+          // them in order to access them during the instruction 
+          // duplication phase
           if (DuplicatedFns.find(&Fn) != DuplicatedFns.end()) {
 
-            // store the function arguments and their duplicates
+            // save the function arguments and their duplicates
             for (int i=0; i < Fn.arg_size(); i=i+2) {
               Value *Arg = Fn.getArg(i);
               Value *ArgClone = Fn.getArg(i+1);
               DuplicatedInstructionMap.insert(std::pair<Value*, Value*>(Arg, ArgClone));
             }
 
-            // duplicate the users of each argument
             for (int i=0; i < Fn.arg_size(); i=i+2) {
               Value *Arg = Fn.getArg(i);
               for (User *U : Arg->users()) {
@@ -600,16 +635,20 @@ struct EDDIVerification : public ModulePass {
             }
           }
       
+          // Iterate over the basic blocks of the function duplicating the instructions
           for (BasicBlock &BB : Fn) {
             for (Instruction &I : BB) {
               if (!isValueDuplicated(DuplicatedInstructionMap, I)) {
+                // perform the duplication
                 int shouldDelete = duplicateInstruction(I, DuplicatedInstructionMap, *ErrBB);
+                // the instruction duplicated may be equal to the original, so we return shouldDelete in order to drop the duplicates
                 if (shouldDelete) {
                   InstructionsToRemove.push_back(&I);
                 }
               }
             }
           }
+          // insert the code for jumping to the error basic block in case of a mismatch
           IRBuilder<> ErrB(ErrBB);
           auto CalleeF = ErrBB->getModule()->getOrInsertFunction(
               "DataCorruption_Handler", FunctionType::getVoidTy(Md.getContext()));
@@ -618,14 +657,17 @@ struct EDDIVerification : public ModulePass {
         }
       }
 
+      // Drop the instructions that have been marked for removal earlier
       for (Instruction *I2rm : InstructionsToRemove) {
         I2rm->eraseFromParent();
       }
+
+      persistCompiledFunctions();
       
       return true;
     }
 };
 } // namespace
 
-char EDDIVerification::ID = 0;
-static RegisterPass<EDDIVerification> X("eddi_verify", "LLVM implementation of EDDI");
+char EDDI::ID = 0;
+static RegisterPass<EDDI> X("eddi_verify", "LLVM implementation of EDDI");

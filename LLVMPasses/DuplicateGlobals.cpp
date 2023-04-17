@@ -85,11 +85,9 @@ struct DuplicateGlobals : public ModulePass {
      */
     bool runOnModule(Module &Md) override {
 
+      // we find the functions not to modify between the ones we already compiled with EDDI
       std::set<std::string> FunctionsToNotModify;
-      getFunctionsToNotModify("compiled_cfgv_functions.csv", FunctionsToNotModify);
-
-      std::map<Function*, StringRef> FuncAnnotations;
-      getFuncAnnotations(Md, FuncAnnotations);
+      getFunctionsToNotModify("compiled_eddi_functions.csv", FunctionsToNotModify);
       
       for (GlobalVariable &GV : Md.globals()) {
         // we don't care if the global is constant as it should not change at runtime

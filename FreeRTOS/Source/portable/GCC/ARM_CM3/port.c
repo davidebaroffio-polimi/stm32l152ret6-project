@@ -398,8 +398,11 @@ void vPortExitCritical( void )
 
 void xPortPendSVHandler( void )
 {
+    #ifdef configINTRA_FUNCTION_CFC
+    __asm volatile (
+        "   bl vBackupSig                       \n");
+    #endif
     /* This is a naked function. */
-
     __asm volatile
     (
         "	mrs r0, psp							\n"
@@ -430,6 +433,10 @@ void xPortPendSVHandler( void )
         "pxCurrentTCBConst: .word pxCurrentTCB	\n"
         ::"i" ( configMAX_SYSCALL_INTERRUPT_PRIORITY )
     );
+    #ifdef configINTRA_FUNCTION_CFC
+    __asm volatile (
+        "   bl vRestoreSig                      \n");
+    #endif
 }
 /*-----------------------------------------------------------*/
 

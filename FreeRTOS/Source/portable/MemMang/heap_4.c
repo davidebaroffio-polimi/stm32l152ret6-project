@@ -119,7 +119,7 @@ void * pvPortMalloc( size_t xWantedSize )
     BlockLink_t * pxBlock, * pxPreviousBlock, * pxNewBlockLink;
     void * pvReturn = NULL;
 
-    vTaskSuspendAll();
+    vBackupRestoreCallVoidFunction(vTaskSuspendAll);
     {
         /* If this is the first call to malloc then the heap will require
          * initialisation to setup the list of free blocks. */
@@ -253,7 +253,8 @@ void * pvPortMalloc( size_t xWantedSize )
 
         traceMALLOC( pvReturn, xWantedSize );
     }
-    ( void ) xTaskResumeAll();
+    vBackupRestoreCallVoidFunction(xTaskResumeAll);
+
 
     #if ( configUSE_MALLOC_FAILED_HOOK == 1 )
         {
@@ -300,7 +301,7 @@ void vPortFree( void * pv )
                  * allocated. */
                 pxLink->xBlockSize &= ~xBlockAllocatedBit;
 
-                vTaskSuspendAll();
+                vBackupRestoreCallVoidFunction(vTaskSuspendAll);
                 {
                     /* Add this block to the list of free blocks. */
                     xFreeBytesRemaining += pxLink->xBlockSize;
@@ -308,7 +309,7 @@ void vPortFree( void * pv )
                     prvInsertBlockIntoFreeList( ( ( BlockLink_t * ) pxLink ) );
                     xNumberOfSuccessfulFrees++;
                 }
-                ( void ) xTaskResumeAll();
+                vBackupRestoreCallVoidFunction(xTaskResumeAll);
             }
             else
             {
@@ -457,7 +458,7 @@ void vPortGetHeapStats( HeapStats_t * pxHeapStats )
     BlockLink_t * pxBlock;
     size_t xBlocks = 0, xMaxSize = 0, xMinSize = portMAX_DELAY; /* portMAX_DELAY used as a portable way of getting the maximum value. */
 
-    vTaskSuspendAll();
+    vBackupRestoreCallVoidFunction(vTaskSuspendAll);
     {
         pxBlock = xStart.pxNextFreeBlock;
 
@@ -487,7 +488,7 @@ void vPortGetHeapStats( HeapStats_t * pxHeapStats )
             } while( pxBlock != pxEnd );
         }
     }
-    ( void ) xTaskResumeAll();
+    vBackupRestoreCallVoidFunction(xTaskResumeAll);
 
     pxHeapStats->xSizeOfLargestFreeBlockInBytes = xMaxSize;
     pxHeapStats->xSizeOfSmallestFreeBlockInBytes = xMinSize;

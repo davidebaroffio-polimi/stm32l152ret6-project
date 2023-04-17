@@ -329,6 +329,11 @@ typedef struct tskTaskControlBlock       /* The old naming convention is used to
     #if ( configUSE_POSIX_ERRNO == 1 )
         int iTaskErrno;
     #endif
+
+    #ifdef configINTRA_FUNCTION_CFC
+        int32_t iRuntmSig;
+        int32_t iAdjstSig; 
+    #endif
 } tskTCB;
 
 /* The old tskTCB name is maintained above then typedefed to the new TCB_t name
@@ -5441,6 +5446,12 @@ __attribute__((annotate("include"))) static void prvAddCurrentTaskToDelayedList(
     #include "tasks_test_access_functions.h"
 #endif
 
+void vApplicationStackOverflowHook( TaskHandle_t xTask,
+                                        char * pcTaskName ) {
+    while (1)
+    {
+    }
+}
 
 #if ( configINCLUDE_FREERTOS_TASK_C_ADDITIONS_H == 1 )
 
@@ -5454,3 +5465,33 @@ __attribute__((annotate("include"))) static void prvAddCurrentTaskToDelayedList(
     #endif
 
 #endif /* if ( configINCLUDE_FREERTOS_TASK_C_ADDITIONS_H == 1 ) */
+
+#ifdef configINTRA_FUNCTION_CFC
+int32_t iRuntmSig __attribute__((annotate("runtime_sig"))) = -0xDEAD; // both signatures must have values grater than 0 during the whole calculation
+int32_t iAdjstSig __attribute__((annotate("run_adj_sig"))) = -0xDEAD;
+/* Store the current runtime signature and the adjusting runtime signature in the current task TCB*/
+void vBackupSig(void) {
+    pxCurrentTCB->iRuntmSig = iRuntmSig;
+    pxCurrentTCB->iAdjstSig = iAdjstSig;
+}
+
+/* Restore the runtime signature and the adjusting runtime signature from the current task TCB*/
+void vRestoreSig(void) {
+    iRuntmSig = pxCurrentTCB->iRuntmSig;
+    iAdjstSig = pxCurrentTCB->iAdjstSig; 
+}
+#endif
+
+__attribute__((annotate("exclude"))) void vBackupRestoreCallVoidFunction(void (*funcToCall)()) {
+    #ifdef configINTRA_FUNCTION_CFC
+    int32_t iRuntmSig_bak = iRuntmSig;
+    int32_t iAdjstSig_bak = iAdjstSig;
+    iRuntmSig = -0xDEAD; 
+    iAdjstSig = -0xDEAD;
+    #endif
+    (funcToCall)();
+    #ifdef configINTRA_FUNCTION_CFC 
+    iRuntmSig = iRuntmSig_bak;
+    iAdjstSig = iAdjstSig_bak;
+    #endif
+}

@@ -140,6 +140,7 @@ void updateRetInstructions(Function &Fn) {
 void updateFunctionCalls(Function &Fn, Function &NewFn) {
     std::list<Instruction*> ListInstrToRemove;
     
+    // for each place in which the function has been called, we replace it with the _ret version
     for (User *U : Fn.users()) {
         if (isa<CallBase>(U)) {
             CallBase *CInstr = cast<CallBase>(U); // this is the instruction that called the function
@@ -152,7 +153,8 @@ void updateFunctionCalls(Function &Fn, Function &NewFn) {
 
             IRBuilder<> B(CInstr);
             
-            // get the pointer of the store instruction
+            // The function return value can be used immediately by a store instruction, 
+            // so we try to get the pointer operand of the store instruction and use it as a return value
             int found = 0;
             for (User *UC : CInstr->users()) {
                 // if the user is a store instruction and the stored value is the output of the call instr
@@ -175,12 +177,15 @@ void updateFunctionCalls(Function &Fn, Function &NewFn) {
                 }
             }
 
+            // if the return is not used by a store but is used by other instructions,
+            // we allocate the memory for return value in the caller function
             if (!found) {
                 IRBuilder<> BInit(&(CInstr->getParent()->getParent()->front().front()));
                 Instruction *TmpAlloca = BInit.CreateAlloca(CInstr->getType());
                 args.push_back(TmpAlloca);
                 // do the call
                 B.CreateCall(NewFn.getFunctionType(), &NewFn, args);
+                // use the load on the return value instead of the previous function output
                 Instruction *TmpLoad = B.CreateLoad(CInstr->getType(), TmpAlloca);
                 CInstr->replaceNonMetadataUsesWith(TmpLoad);
             }
@@ -203,23 +208,15 @@ public:
         std::list<Function*> FnList;
 
         for (Function &Fn : Md) {
-            if (!Fn.isDeclarationForLinker() && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
+            if (Fn.getBasicBlockList().size() != 0 && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
                 FnList.push_back(&Fn);
             }
         }
 
         for (Function *Fn : FnList) {
-            //errs() << Fn->getName() << "\n";
             Function *newFn = updateFnSignature(*Fn, Md);
             if (newFn != NULL) {
                 updateFunctionCalls(*Fn, *newFn); 
-                //errs() << *newFn << "\n";
-            }
-        }
-
-        for (Function &Fn : Md) {
-            if (Fn.getName().equals("prvTaskCheckFreeStackSpace_dup")) {
-                //errs() << Fn;
             }
         }
         return 1;

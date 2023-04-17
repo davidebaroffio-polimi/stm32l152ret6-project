@@ -37,10 +37,10 @@
  * The currently defined scopes are:
  * - 0: no benchmarks
  * - 1: Microbenchmarks
- * - 2: DES performance benchmark
+ * - 2: (Deprecated) DES performance benchmark
  * - 3: MatMult performance benchmark
 */
-#define SCOPE 1
+#define SCOPE 3
 
 /* USER CODE END PTD */
 
@@ -126,7 +126,7 @@ __attribute__((annotate("include"))) int main(void)
   if(xRet1 & xRet2 &  xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS) 
 
 #elif SCOPE == 2 // DES benchmark
-  BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 300, NULL, tskIDLE_PRIORITY + 8, NULL);
+  BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 1000, NULL, tskIDLE_PRIORITY + 8, NULL);
   if (xRet == pdPASS)
 
 #elif SCOPE == 3 // MatMult benchmark
@@ -359,7 +359,7 @@ __attribute__((annotate("exclude"))) void vTaskDES( void * pvParameters )
     pvParameters value in the call to xTaskCreate() below. */
     configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
 
-    vTaskDelay(100);
+    vTaskDelay(1000);
     
     for( ;; )
     {

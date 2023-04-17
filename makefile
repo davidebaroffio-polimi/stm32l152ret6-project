@@ -8,7 +8,7 @@ INC=		-ICore/Inc \
 CLANG= 		Tools/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/clang
 LLVMLINK= 	Tools/llvm/llvm-link
 OPT= 		Tools/llvm/opt
-OPT_PARAMS= --enable-new-pm=0 -S -load Tools/llvm/CFGVerification.so
+OPT_PARAMS= --enable-new-pm=0 -S -load Tools/llvm/SIHFT.so
 CONFG=	 	Tools/LLVMEmbeddedToolchainForArm-15.0.2-Linux-x86_64/bin/armv7m_soft_nofp.cfg
 LD= 		-T"Drivers/STM32L152RETX_FLASH.ld"
 STARTUP= 	Core/Startup/startup_stm32l152retx.s
@@ -19,7 +19,7 @@ all_nopass:
 	@echo 'Finished building target: out_nopass.elf'
 	@echo ' '
 
-all: 
+all_cfcss: 
 	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 `find Core/Src -type f -iname *.c` `ls FreeRTOS/Source/*.c` -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) --specs=nosys.specs -static --specs=nano.specs -mfloat-abi=soft -mthumb -emit-llvm -S -Xclang -disable-O0-optnone
 
 	$(LLVMLINK) -S `find . -type f -iname "*.ll" -print` -o out.ll
@@ -27,7 +27,7 @@ all:
 	$(OPT) $(OPT_PARAMS) -func_ret_to_ref out.ll -o out.ll
 	$(OPT) $(OPT_PARAMS) -eddi_verify out.ll -o out.ll
 	$(OPT) -passes=simplifycfg out.ll -o out.ll -S
-	$(OPT) $(OPT_PARAMS) -verify_cfg out.ll -o out.ll 
+	$(OPT) $(OPT_PARAMS) -cfcss_verify out.ll -o out.ll 
 
 	mv out.ll out
 	rm *.ll
