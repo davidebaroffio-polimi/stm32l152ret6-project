@@ -1,3 +1,12 @@
+/**
+ * ************************************************************************************************
+ * @brief  LLVM pass implementing Random Additive Signature Monitoring (RASM).
+ *         Original algorithm by Vankeirsbilck et Al. (DOI: 10.1109/TR.2017.2754548)
+ * 
+ * @author Davide Baroffio, Politecnico di Milano, Italy (dav.baroffio@mail.polimi.it)
+ * ************************************************************************************************
+*/
+
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/Function.h"
@@ -316,12 +325,13 @@ struct RASM : public ModulePass {
 
     bool runOnModule(Module &Md) override {
         getFuncAnnotations(Md);
+
+        // Collection of <BB, RandomSign
         std::map<BasicBlock*, int> RandomNumberBBs;
         std::map<BasicBlock*, int> SubRanPrevVals;
 
         std::map<Function*, BasicBlock*> ErrBBs;
 
-        // initialize global variables
         auto *IntType = llvm::Type::getInt32Ty(Md.getContext());
 
         #if (INTRA_FUNCTION_CFC == 1)

@@ -1,3 +1,12 @@
+/**
+ * ************************************************************************************************
+ * @brief  LLVM ModulePass that transforms the functions with a return value to void functions
+ *         where a pointer is passed as parameter to store the return value.
+ * 
+ * @author Davide Baroffio, Politecnico di Milano, Italy (dav.baroffio@mail.polimi.it)
+ * ************************************************************************************************
+*/
+
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"

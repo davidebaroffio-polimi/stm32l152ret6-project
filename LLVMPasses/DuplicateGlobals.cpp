@@ -1,3 +1,11 @@
+/**
+ * ************************************************************************************************
+ * @brief  LLVM pass implementing globals duplication for EDDI (see EDDI.cpp).
+ * 
+ * @author Davide Baroffio, Politecnico di Milano, Italy (dav.baroffio@mail.polimi.it)
+ * ************************************************************************************************
+*/
+
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"

@@ -1,3 +1,11 @@
+/**
+ * ************************************************************************************************
+ * @brief  LLVM pass implementing Control Flow Checking by Software Signatures (CFCSS).
+ *         Original algorithm by Oh et Al. (DOI: 10.1109/24.994926)
+ * 
+ * @author Davide Baroffio, Politecnico di Milano, Italy (dav.baroffio@mail.polimi.it)
+ * ************************************************************************************************
+*/
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Attributes.h"
 #include "llvm/IR/Function.h"

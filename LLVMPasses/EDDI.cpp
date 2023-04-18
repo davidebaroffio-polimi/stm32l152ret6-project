@@ -1,3 +1,12 @@
+/**
+ * ************************************************************************************************
+ * @brief  LLVM pass implementing Error Detection by Duplicate Instructions (EDDI).
+ *         Original algorithm by Oh et Al. (DOI: 10.1109/24.994913)
+ * 
+ * @author Davide Baroffio, Politecnico di Milano, Italy (dav.baroffio@mail.polimi.it)
+ * ************************************************************************************************
+*/
+
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
