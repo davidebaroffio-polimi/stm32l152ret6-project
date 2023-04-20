@@ -78,7 +78,7 @@
 #define configUSE_TIMERS                         1
 #define configTIMER_TASK_PRIORITY                ( 2 )
 #define configTIMER_QUEUE_LENGTH                 10
-#define configTIMER_TASK_STACK_DEPTH             256
+#define configTIMER_TASK_STACK_DEPTH             300
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
@@ -126,11 +126,12 @@ to all Cortex-M ports, and do not rely on any particular library functions. */
 See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 #define configMAX_SYSCALL_INTERRUPT_PRIORITY 	( configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY << (8 - configPRIO_BITS) )
 
+extern void assertionFailed();
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */
 /* USER CODE BEGIN 1 */
-//#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );}
-//#define configINTRA_FUNCTION_CFC
+#define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); assertionFailed();}
+#define configINTRA_FUNCTION_CFC
 /* USER CODE END 1 */
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS

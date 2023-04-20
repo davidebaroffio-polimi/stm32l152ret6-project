@@ -486,8 +486,6 @@ struct EDDI : public ModulePass {
         // there are some instructions that can be annotated with "to_duplicate" in order to tell the pass
         // to duplicate the function call.
         if ((FuncAnnotations.find(CInstr->getCalledFunction()) != FuncAnnotations.end() && (*FuncAnnotations.find(CInstr->getCalledFunction())).second.startswith("to_duplicate"))) {
-        //if ((FuncAnnotations.find(CInstr->getCalledFunction()))->second.startswith("to_duplicate")) {
-          errs() << CInstr->getCalledFunction()->getName() << "\n";
           // duplicate the instruction
           cloneInstr(*CInstr, DuplicatedInstructionMap);
           

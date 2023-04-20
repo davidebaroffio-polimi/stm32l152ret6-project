@@ -24,9 +24,6 @@ MessageBufferHandle_t xMessageBuffer = NULL;
  * at completion.
 */
 void vTaskBufferTestSend ( void * pvParameters ) {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
 
     for ( ;; ) {
         // When a message is written to the message buffer an additional sizeof( size_t ) bytes are also written to store the message's length. sizeof( size_t ) is typically 4 bytes on a 32-bit architecture, so on most 32-bit architectures a 10 byte message will take up 14 bytes of message buffer space.
@@ -47,9 +44,6 @@ void vTaskBufferTestSend ( void * pvParameters ) {
 
 
 void vTaskBufferTestReceive ( void * pvParameters ) {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
 
     for ( ;; ) {
         while (xMessageBuffer == NULL) {
@@ -72,9 +66,6 @@ void vTimerCallback( TimerHandle_t xTimer ) {
 }
 
 void vTaskTimerTest ( void * pvParameters ) {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     int isDeleted = pdPASS;
 
     TimerHandle_t xTimer;

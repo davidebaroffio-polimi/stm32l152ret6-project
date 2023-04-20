@@ -431,7 +431,7 @@
 #endif
 
 #ifndef configCHECK_FOR_STACK_OVERFLOW
-    #define configCHECK_FOR_STACK_OVERFLOW    0
+    #define configCHECK_FOR_STACK_OVERFLOW    2
 #endif
 
 #ifndef configRECORD_STACK_HIGH_ADDRESS
@@ -1225,6 +1225,11 @@ typedef struct xSTATIC_TCB
     #endif
     #if ( configUSE_POSIX_ERRNO == 1 )
         int iDummy22;
+    #endif
+
+    #ifdef configINTRA_FUNCTION_CFC
+        int32_t iDummyRuntmSig;
+        int32_t iDummyAdjstSig; 
     #endif
 } StaticTask_t;
 

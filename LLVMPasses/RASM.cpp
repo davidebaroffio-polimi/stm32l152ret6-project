@@ -27,7 +27,7 @@ using namespace llvm;
  * - 0: Disabled
  * - 1: Enabled
 */
-#define INTRA_FUNCTION_CFC 0
+#define INTRA_FUNCTION_CFC 1
 #define INIT_SIGNATURE -0xDEAD // The same value has to be used as initializer for the signatures in the code
 
 /**
@@ -59,6 +59,15 @@ struct RASM : public ModulePass {
       file.close();
     }
     #endif
+
+    /**
+     * This function specifies whether the function Fn should be compiled.
+    */
+    bool shouldCompile(Function &Fn) {
+      return &Fn != nullptr && Fn.getBasicBlockList().size() != 0 
+            && (FuncAnnotations.find(&Fn) == FuncAnnotations.end() || 
+            !FuncAnnotations.find(&Fn)->second.startswith("exclude"));
+    }
 
     /**
      * TODO This function supports only one annotation for each function, multiple annotations are discarded, perhaps I can fix this lol
@@ -99,7 +108,7 @@ struct RASM : public ModulePass {
     void initializeBlocksSignatures(Module &Md, std::map<BasicBlock*, int> &RandomNumberBBs, std::map<BasicBlock*, int> &SubRanPrevVals) {
         int i = 0;
         for (Function &Fn : Md) {
-            if (!Fn.isDeclarationForLinker()) {
+            if (shouldCompile(Fn)) {
                 for (BasicBlock &BB : Fn) {
                     if (!BB.getName().equals_insensitive("errbb")) {
                         RandomNumberBBs.insert(std::pair<BasicBlock*, int>(&BB, i));
@@ -111,7 +120,12 @@ struct RASM : public ModulePass {
         }
         return;
     }
+    
+    #if (INTRA_FUNCTION_CFC == 1)
 
+    std::map<BasicBlock*, CallBase *> CallBBs;
+    std::map<Function*, BasicBlock*> FuncEntryBlocks;
+    std::map<BasicBlock*, BasicBlock*> SplitBBs;
     /**
      * Navigates the module's (not declared for linker and not externally linked) functions.
      * For each such function, split all the basic blocks calling it before the
@@ -119,28 +133,60 @@ struct RASM : public ModulePass {
      * @param Md The module for which to perform the split.
      */
     void splitBBsAtCalls(Module &Md) {
+      std::set<CallBase*> CallInstructions;
+      // perform the split
       for (Function &Fn : Md) {
         // we target only functions defined in the module (i.e. not the ones that
         // have to be linked because they are not in the scope of this compilation
         // instance)
-        if (!Fn.isDeclarationForLinker()) {
+        if (shouldCompile(Fn)) {
           for (User *U : Fn.users()) {
-            if (isa<Instruction>(U)) {
-                Instruction *Caller = cast<Instruction>(U);
-                Instruction *SplitInstr = Caller->getNextNonDebugInstruction();
-                Caller->getParent()->splitBasicBlockBefore(SplitInstr);
+            if (isa<CallBase>(U)) {
+              // Split the basic block containing U, insert the user into the set of call instructions
+              CallBase *Caller = cast<CallBase>(U);
+              Instruction *SplitInstr = Caller->getNextNonDebugInstruction();
+              Caller->getParent()->splitBasicBlockBefore(SplitInstr);
+              CallInstructions.insert(Caller);
+            }
+          }
+        }
+      }
+      
+      // populate CallBBs 
+      for (CallBase *Caller : CallInstructions) {
+        CallBBs.insert(std::pair<BasicBlock*, CallBase*>(Caller->getParent(), Caller));
+      }
+
+      // populate SplitBBs
+      for (Function &Fn : Md) {
+        if (shouldCompile(Fn)) {
+          for (BasicBlock &BB : Fn) {
+            if (isCallBB(BB) != nullptr) {
+              SplitBBs.insert(std::pair<BasicBlock*, BasicBlock*>(&BB, BB.getUniqueSuccessor()));
             }
           }
         }
       }
     }
 
-    bool isCallBB (BasicBlock &BB) {
-      return isa<BranchInst>(BB.getTerminator()) 
-        && cast<BranchInst>(BB.getTerminator())->isUnconditional() 
-        && BB.getTerminator()->getPrevNonDebugInstruction() != nullptr
-        && isa<CallBase>(BB.getTerminator()->getPrevNonDebugInstruction());
+    // Returns the instruction performing the call if the BB is in CallBBs. Returns nullptr otherwise.
+    CallBase *isCallBB (BasicBlock &BB) {
+      if (CallBBs.find(&BB) != CallBBs.end()) {
+        return CallBBs.find(&BB)->second;
+      }
+      else {
+        return nullptr;
+      }
     }
+
+    void initializeEntryBlocksMap(Module &Md) {
+      for (Function &Fn : Md) {
+        if (shouldCompile(Fn)) 
+          FuncEntryBlocks.insert(std::pair<Function*, BasicBlock*>(&Fn, &Fn.front()));
+      }
+    }
+
+    #endif
 
     Value *getCondition(Instruction &I) {
       if (isa<BranchInst>(I) && cast<BranchInst>(I).isConditional()) {
@@ -213,27 +259,36 @@ struct RASM : public ModulePass {
 
         #if (INTRA_FUNCTION_CFC == 1) 
         // Case A, we need to update the RetSig
-        if (isCallBB(BB)) {
-          BasicBlock *SuccBB = cast<BranchInst>(BB.getTerminator())->getSuccessor(0); // note: since we have a call, we only have one successor
+        CallBase *CallIn = isCallBB(BB);
+        if (CallIn != nullptr && shouldCompile(*(*CallIn).getCalledFunction())) {
+          // Get the signature of the called basic block after the call
+          BasicBlock *SuccBB = SplitBBs.find(&BB)->second;
           int randomNumberSuccBB = RandomNumberBBs.find(SuccBB)->second;
           int subRanPrevValSuccBB = SubRanPrevVals.find(SuccBB)->second;
           int retSig = randomNumberSuccBB + subRanPrevValSuccBB;
+          
+          // Get the signature of the first basic block of the called function
+          BasicBlock *CalledBB = FuncEntryBlocks.find(CallIn->getCalledFunction())->second;
+          int randomNumberCalledBB = RandomNumberBBs.find(CalledBB)->second;
+          int subRanPrevValCalledBB = SubRanPrevVals.find(CalledBB)->second;
+          
+          IRBuilder<> B(CallIn);
+          
+          // Backup the ret signature so that we don't overwrite it
+          Value* RetSigBackup = B.CreateLoad(IntType, &RetSig);
 
-          CallBase *CallIn = cast<CallBase>(BB.getTerminator()->getPrevNonDebugInstruction());
-          if (CallIn->getCalledFunction() != NULL && CallIn->getCalledFunction()->getBasicBlockList().size() != 0 
-              && (FuncAnnotations.find(CallIn->getCalledFunction()) == FuncAnnotations.end() || 
-              !FuncAnnotations.find(CallIn->getCalledFunction())->second.startswith("exclude"))) {
-            BasicBlock *CalledBB = &CallIn->getCalledFunction()->front();
-            if (RandomNumberBBs.find(CalledBB) == RandomNumberBBs.end()) {
-              CalledBB = CalledBB->getNextNode();
-            }
-            if (RandomNumberBBs.find(CalledBB) != RandomNumberBBs.end() && CalledBB != nullptr) { 
-              int randomNumberCalledBB = RandomNumberBBs.find(CalledBB)->second;
-              int subRanPrevValCalledBB = SubRanPrevVals.find(CalledBB)->second;
-              IRBuilder<> B(BB.getTerminator()->getPrevNonDebugInstruction());
-              B.CreateStore(llvm::ConstantInt::get(IntType, randomNumberCalledBB+subRanPrevValCalledBB), &RuntimeSig);
-              B.CreateStore(llvm::ConstantInt::get(IntType, retSig), &RetSig);
-            }
+          // Set the runtime signature as the input signature of the first basic block of the called function
+          B.CreateStore(llvm::ConstantInt::get(IntType, randomNumberCalledBB+subRanPrevValCalledBB), &RuntimeSig);
+          
+          // Set the ret signature as the signature of the basic block after the call
+          B.CreateStore(llvm::ConstantInt::get(IntType, retSig), &RetSig);
+
+          // Restore the ret signature after the call
+          B.SetInsertPoint(CallIn->getNextNonDebugInstruction());
+          B.CreateStore(RetSigBackup, &RetSig);
+
+          if (retSig == 2253 || retSig == 2255) {
+            errs() << BB << "\n";
           }
         }
         else
@@ -241,8 +296,14 @@ struct RASM : public ModulePass {
         // Case B, we need to add a check on the RetSig and update the RuntimeSig
         if (isa<ReturnInst>(BB.getTerminator())) {
           // add a control basic block before the return instruction
-          BasicBlock *PrevBB = BB.splitBasicBlockBefore(BB.getTerminator());
+          BB.splitBasicBlockBefore(BB.getTerminator());
           BasicBlock *NewBB = BasicBlock::Create(BB.getContext(), "RASM_ret_Verification_BB", BB.getParent(), &BB);
+          // replace the uses of BB with NewBB
+          for (BasicBlock &BB_ : *BB.getParent()) {
+            if (&BB_ != NewBB) {
+              BB_.getTerminator()->replaceSuccessorWith(&BB, NewBB);
+            }
+          }
           int primeNum = randomNumberBB - subRanPrevVal;
 
           // compute the adjustment value as AdjVal = primeNum+SubRanPrevVal-RetSig = randomNumberBB-subRanPrevVal+SubRanPrevVal-RetSig = randomNumberBB-RetSig
@@ -353,8 +414,12 @@ struct RASM : public ModulePass {
 
         initializeBlocksSignatures(Md, RandomNumberBBs, SubRanPrevVals);
 
+        #if (INTRA_FUNCTION_CFC == 1)
+        initializeEntryBlocksMap(Md);
+        #endif
+
         for (Function &Fn : Md) {
-          if (Fn.getBasicBlockList().size() != 0 && !(*FuncAnnotations.find(&Fn)).second.startswith("exclude")) {
+          if (shouldCompile(Fn)) {
             #if (LOG_COMPILED_FUNCS == 1)
               CompiledFuncs.insert(&Fn);
             #endif
@@ -404,7 +469,7 @@ struct RASM : public ModulePass {
             for (auto &Elem : RandomNumberBBs) {
               BasicBlock *BB = Elem.first;
               if (BB->getParent() == &Fn) {
-                  createCFGVerificationBB(*BB, RandomNumberBBs, SubRanPrevVals, *RuntimeSig, *RetSig, *ErrBB);
+                createCFGVerificationBB(*BB, RandomNumberBBs, SubRanPrevVals, *RuntimeSig, *RetSig, *ErrBB);
               }
             }
           }

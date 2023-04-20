@@ -52,9 +52,6 @@ StackType_t xStack[ 128 ];
 StaticTask_t xTaskBuffer;
 
 void vTaskUseless( void * pvParameters ) {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     
     for ( ;; ) {
         vTaskDelay(5);
@@ -102,15 +99,12 @@ void fnTest2() {
 }
 
 void vTaskTaskTest ( void * pvParameters ) {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
 
     void (*functions[1])() = {fnTest1};
 
     int i = 0;
     for ( ;; ) {
-        functions[i%1]();
+        vBackupRestoreCallVoidFunction(functions[i%1]);
         i++;
         vTaskDelay(5);
     }

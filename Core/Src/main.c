@@ -40,7 +40,7 @@
  * - 2: (Deprecated) DES performance benchmark
  * - 3: MatMult performance benchmark
 */
-#define SCOPE 3
+#define SCOPE 1
 
 /* USER CODE END PTD */
 
@@ -115,22 +115,23 @@ __attribute__((annotate("include"))) int main(void)
   //      | | |
   //      V V V
 #if SCOPE == 1 // microbenchmarks
-  BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
-  BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL ); 
-  BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 200, NULL, tskIDLE_PRIORITY + 1, NULL );
+  /* BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
+  BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL );  */
+  BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 256, NULL, tskIDLE_PRIORITY + 1, NULL );
   BaseType_t xRet4 = xTaskCreate( vTaskQueueTest4, "queue4", 200, NULL, tskIDLE_PRIORITY + 2, NULL );
-  BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 200, NULL, tskIDLE_PRIORITY + 5, NULL );
-  BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 200, NULL, tskIDLE_PRIORITY+7, NULL);
+  //BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 200, NULL, tskIDLE_PRIORITY + 5, NULL );
+  /* 
+  BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 200, NULL, tskIDLE_PRIORITY+7, NULL); 
   BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 200, NULL, tskIDLE_PRIORITY+6, NULL);
-  BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer1", 200, NULL, tskIDLE_PRIORITY+8, NULL);
-  if(xRet1 & xRet2 &  xRet3 & xRet4 & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS) 
+  BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer1", 200, NULL, tskIDLE_PRIORITY+8, NULL);  */
+  if(/* xRet1 & xRet2 & */  xRet3 & xRet4 /* & xRet5 */ /* & xRet6 & xRet7 & xRet8 */  == pdPASS) 
 
 #elif SCOPE == 2 // DES benchmark
   BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 1000, NULL, tskIDLE_PRIORITY + 8, NULL);
   if (xRet == pdPASS)
 
 #elif SCOPE == 3 // MatMult benchmark
-  BaseType_t xRet = xTaskCreate(vTaskMM, "benchmark", 300, NULL, tskIDLE_PRIORITY + 8, NULL);
+  BaseType_t xRet = xTaskCreate(vTaskMM, "benchmark", 400, NULL, tskIDLE_PRIORITY + 8, NULL);
   if (xRet == pdPASS)
 #endif
 
@@ -301,9 +302,6 @@ __attribute__((annotate("exclude"))) static void MX_TIM6_Init(void)
 //__attribute__((annotate("task"))) 
 __attribute__((annotate("task"))) void vTaskCode1( void * pvParameters )
 {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = 5;
     BaseType_t xWasDelayed;
@@ -326,9 +324,6 @@ __attribute__((annotate("task"))) void vTaskCode1( void * pvParameters )
 //__attribute__((annotate("task"))) 
 __attribute__((annotate("task"))) void vTaskCode2( void * pvParameters )
 {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
     TickType_t xLastWakeTime;
     const TickType_t xFrequency = 5;
     BaseType_t xWasDelayed;
@@ -355,10 +350,6 @@ int benchmark_res(int res) {
 /* Task to be created. */
 __attribute__((annotate("exclude"))) void vTaskDES( void * pvParameters )
 {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
-
     vTaskDelay(1000);
     
     for( ;; )
@@ -375,10 +366,6 @@ __attribute__((annotate("exclude"))) void vTaskDES( void * pvParameters )
 /* Task to be created. */
 __attribute__((annotate("exclude"))) void vTaskMM( void * pvParameters )
 {
-    /* The parameter value is expected to be 1 as 1 is passed in the
-    pvParameters value in the call to xTaskCreate() below. */
-    configASSERT( ( ( uint32_t ) pvParameters ) == 1 );
-
     vTaskDelay(100);
     
     for( ;; )
@@ -431,6 +418,11 @@ __attribute__((annotate("exclude"))) void SigMismatch_Handler(void)
   {
   }
   /* USER CODE END Error_Handler_Debug */
+}
+
+
+void assertionFailed() {
+  for (;;);
 }
 
 #ifdef  USE_FULL_ASSERT

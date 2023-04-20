@@ -343,7 +343,7 @@ BaseType_t xPortStartScheduler( void )
     uxCriticalNesting = 0;
 
     /* Start the first task. */
-    prvPortStartFirstTask();
+    vBackupRestoreCallVoidFunction(prvPortStartFirstTask);
 
     /* Should never get here as the tasks will now be executing!  Call the task
      * exit error function to prevent compiler warnings about a static function
@@ -398,11 +398,6 @@ void vPortExitCritical( void )
 
 void xPortPendSVHandler( void )
 {
-    #ifdef configINTRA_FUNCTION_CFC
-    __asm volatile (
-        "   bl vBackupSig                       \n");
-    #endif
-    /* This is a naked function. */
     __asm volatile
     (
         "	mrs r0, psp							\n"
@@ -417,7 +412,14 @@ void xPortPendSVHandler( void )
         "	stmdb sp!, {r3, r14}				\n"
         "	mov r0, %0							\n"
         "	msr basepri, r0						\n"
+        #ifdef configINTRA_FUNCTION_CFC        
+        "   bl vBackupSig                       \n"
+        "   bl vResetSig                        \n"
+        #endif
         "	bl vTaskSwitchContext				\n"
+        #ifdef configINTRA_FUNCTION_CFC
+        "   bl vRestoreSig                      \n"
+        #endif
         "	mov r0, #0							\n"
         "	msr basepri, r0						\n"
         "	ldmia sp!, {r3, r14}				\n"
@@ -433,10 +435,6 @@ void xPortPendSVHandler( void )
         "pxCurrentTCBConst: .word pxCurrentTCB	\n"
         ::"i" ( configMAX_SYSCALL_INTERRUPT_PRIORITY )
     );
-    #ifdef configINTRA_FUNCTION_CFC
-    __asm volatile (
-        "   bl vRestoreSig                      \n");
-    #endif
 }
 /*-----------------------------------------------------------*/
 
@@ -449,7 +447,7 @@ void xPortSysTickHandler( void )
     portDISABLE_INTERRUPTS();
     {
         /* Increment the RTOS tick. */
-        if( xTaskIncrementTick() != pdFALSE )
+        if( xBackupRestoreCallVoidFunction(xTaskIncrementTick) != pdFALSE )
         {
             /* A context switch is required.  Context switching is performed in
              * the PendSV interrupt.  Pend the PendSV interrupt. */
