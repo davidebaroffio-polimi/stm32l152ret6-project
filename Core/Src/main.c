@@ -37,10 +37,10 @@
  * The currently defined scopes are:
  * - 0: no benchmarks
  * - 1: Microbenchmarks
- * - 2: (Deprecated) DES performance benchmark
+ * - 2: DES performance benchmark
  * - 3: MatMult performance benchmark
 */
-#define SCOPE 1
+#define SCOPE 3
 
 /* USER CODE END PTD */
 
@@ -85,7 +85,28 @@ void vTaskMM(void * pvParameters);
 __attribute__((annotate("include"))) int main(void)
 {
   /* USER CODE BEGIN 1 */
+  
+  // Create tasks below
+  //      | | |
+  //      V V V
+  int xCanStartScheduler = 0;
+#if SCOPE == 1 // microbenchmarks
+  BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 400, NULL, tskIDLE_PRIORITY + 5, NULL );
+  BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 500, NULL, tskIDLE_PRIORITY+7, NULL); 
+  BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 500, NULL, tskIDLE_PRIORITY+6, NULL);
+  BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer", 500, NULL, tskIDLE_PRIORITY+8, NULL); 
+  BaseType_t xRetQ = xTaskCreate( vTaskTestQueue, "queue", 500, NULL, tskIDLE_PRIORITY + 3, NULL);
+  if (xRetQ & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS)
 
+#elif SCOPE == 2 // DES benchmark
+  BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 1200, NULL, tskIDLE_PRIORITY + 8, NULL);
+  if (xRet == pdPASS)
+
+#elif SCOPE == 3 // MatMult benchmark
+  BaseType_t xRet = xTaskCreate(vTaskMM, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);
+  if (xRet == pdPASS)
+#endif
+    xCanStartScheduler = 1;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -110,31 +131,7 @@ __attribute__((annotate("include"))) int main(void)
   MX_TIM6_Init();
 
   /* USER CODE BEGIN 2 */
-
-  // Create tasks below
-  //      | | |
-  //      V V V
-#if SCOPE == 1 // microbenchmarks
-  /* BaseType_t xRet1 = xTaskCreate( vTaskQueueTest1, "queue1", 200, NULL, tskIDLE_PRIORITY + 4, NULL );
-  BaseType_t xRet2 = xTaskCreate( vTaskQueueTest2, "queue2", 200, NULL, tskIDLE_PRIORITY + 3, NULL );  */
-  BaseType_t xRet3 = xTaskCreate( vTaskQueueTest3, "queue3", 256, NULL, tskIDLE_PRIORITY + 1, NULL );
-  BaseType_t xRet4 = xTaskCreate( vTaskQueueTest4, "queue4", 200, NULL, tskIDLE_PRIORITY + 2, NULL );
-  //BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 200, NULL, tskIDLE_PRIORITY + 5, NULL );
-  /* 
-  BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 200, NULL, tskIDLE_PRIORITY+7, NULL); 
-  BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 200, NULL, tskIDLE_PRIORITY+6, NULL);
-  BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer1", 200, NULL, tskIDLE_PRIORITY+8, NULL);  */
-  if(/* xRet1 & xRet2 & */  xRet3 & xRet4 /* & xRet5 */ /* & xRet6 & xRet7 & xRet8 */  == pdPASS) 
-
-#elif SCOPE == 2 // DES benchmark
-  BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 1000, NULL, tskIDLE_PRIORITY + 8, NULL);
-  if (xRet == pdPASS)
-
-#elif SCOPE == 3 // MatMult benchmark
-  BaseType_t xRet = xTaskCreate(vTaskMM, "benchmark", 400, NULL, tskIDLE_PRIORITY + 8, NULL);
-  if (xRet == pdPASS)
-#endif
-
+  if (xCanStartScheduler)
     vTaskStartScheduler();
   /* USER CODE END 2 */
 
@@ -348,9 +345,9 @@ int benchmark_res(int res) {
 }
 
 /* Task to be created. */
-__attribute__((annotate("exclude"))) void vTaskDES( void * pvParameters )
+__attribute__((annotate("include"))) void vTaskDES( void * pvParameters )
 {
-    vTaskDelay(1000);
+    vTaskDelay(10);
     
     for( ;; )
     {
@@ -364,7 +361,7 @@ __attribute__((annotate("exclude"))) void vTaskDES( void * pvParameters )
 }
 
 /* Task to be created. */
-__attribute__((annotate("exclude"))) void vTaskMM( void * pvParameters )
+__attribute__((annotate("include"))) void vTaskMM( void * pvParameters )
 {
     vTaskDelay(100);
     

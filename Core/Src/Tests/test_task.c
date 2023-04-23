@@ -48,7 +48,7 @@ xTaskCheckForTimeOut                [x] // used by queue.c
 #include "test.h"
 #include "task.h"
 
-StackType_t xStack[ 128 ];
+StackType_t xStack[ configMINIMAL_STACK_SIZE ];
 StaticTask_t xTaskBuffer;
 
 void vTaskUseless( void * pvParameters ) {
@@ -62,7 +62,7 @@ void fnTest1() {
     // create static task
     TaskHandle_t xHandle = xTaskCreateStatic(vTaskUseless,      // function
                                              "uselessTask\0",   // task name
-                                             128,               // stack size
+                                             configMINIMAL_STACK_SIZE,               // stack size
                                              NULL,              // params
                                              tskIDLE_PRIORITY,  // priority
                                              xStack,            // task stack array
@@ -88,7 +88,7 @@ void fnTest2() {
     int numTasks = uxTaskGetNumberOfTasks();
     TaskHandle_t xHandle = NULL;
     
-    xTaskCreate(vTaskUseless, name, 128, NULL, tskIDLE_PRIORITY, NULL);
+    xTaskCreate(vTaskUseless, name, configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
     if (uxTaskGetNumberOfTasks() != numTasks +1 || 
         xTaskGetSchedulerState() != taskSCHEDULER_RUNNING ||
         uxTaskGetStackHighWaterMark(xHandle) <= 0) {

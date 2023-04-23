@@ -237,6 +237,5 @@ void des_init()
     isw = value;
 
     des(inp, key, &newkey, isw, &out);
-    vTaskDelay(100);
     if (out.r != 1806503748 || out.l != 2489587893) Incorrect_Result();
 }
