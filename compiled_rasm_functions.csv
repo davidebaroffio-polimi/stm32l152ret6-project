@@ -1,6 +1,6 @@
 fn_name
-vTaskCode1
 vListInitialise
+des
 HAL_UART_MspDeInit
 fnTestQueue1
 fnTestQueue2
@@ -35,11 +35,8 @@ SVC_Handler
 DebugMon_Handler
 PendSV_Handler
 SysTick_Handler
-des
 prvInitialiseNewTimer
 getbit
-ucStreamBufferGetStreamBufferType
-xQueueGenericCreateStatic
 ks
 cyfun
 des_init
@@ -136,6 +133,7 @@ pvTaskIncrementMutexHeldCount
 ulTaskGenericNotifyTake
 xTaskGenericNotifyWait
 xTaskGenericNotify
+_read_ret
 _write_ret
 _close_ret
 _fstat_ret
@@ -186,6 +184,7 @@ xEventGroupSetBitsFromISR
 uxEventGroupGetNumber
 vEventGroupSetNumber
 main
+vTaskCode1
 vTaskCode2
 vTaskDES
 vTaskMM
@@ -215,6 +214,8 @@ xStreamBufferSendCompletedFromISR
 xStreamBufferReceiveCompletedFromISR
 uxStreamBufferGetStreamBufferNumber
 vStreamBufferSetStreamBufferNumber
+ucStreamBufferGetStreamBufferType
+xQueueGenericCreateStatic
 memcpy_to_duplicate
 prvInitialiseNewQueue
 xQueueGenericReset
@@ -262,7 +263,6 @@ _sbrk_ret
 getbit_ret
 _getpid_ret
 _kill_ret
-_read_ret
 prvSampleTimeNow_ret
 prvInsertTimerInActiveList_ret
 prvGetNextExpireTime_ret
@@ -380,6 +380,7 @@ ucQueueGetQueueType_ret
 xQueueIsQueueEmptyFromISR_ret
 xQueueIsQueueFullFromISR_ret
 pcQueueGetName_ret
+uxQueueMessagesWaitingFromISR_ret_dup
 HAL_UART_MspDeInit_dup
 fnTestQueue1_dup
 fnTestQueue2_dup
@@ -753,7 +754,6 @@ xQueueReceiveFromISR_ret_dup
 xQueuePeekFromISR_ret_dup
 uxQueueMessagesWaiting_ret_dup
 uxQueueSpacesAvailable_ret_dup
-uxQueueMessagesWaitingFromISR_ret_dup
 uxQueueGetQueueNumber_ret_dup
 ucQueueGetQueueType_ret_dup
 xQueueIsQueueEmptyFromISR_ret_dup
