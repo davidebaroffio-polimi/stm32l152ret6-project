@@ -31,8 +31,9 @@ using namespace llvm;
 /**
  * - 0: EDDI (Add checks at every basic block)
  * - 1: FDSC (Add checks only at basic blocks with more than one predecessor)  
+ * - 2: Add consistency checks before conditional branches, returns and calls
  */
-#define SELECTIVE_CHECKING 0
+#define SELECTIVE_CHECKING 1
 
 namespace {
 struct EDDI : public ModulePass {
@@ -78,6 +79,15 @@ struct EDDI : public ModulePass {
           }
         }
       }
+    }
+
+    /**
+     * This function specifies whether the function Fn should be compiled.
+    */
+    bool shouldCompile(Function &Fn) {
+      return &Fn != nullptr && Fn.getBasicBlockList().size() != 0 
+            && (FuncAnnotations.find(&Fn) == FuncAnnotations.end() || 
+            !FuncAnnotations.find(&Fn)->second.startswith("exclude"));
     }
 
     /**
@@ -391,7 +401,7 @@ struct EDDI : public ModulePass {
        bool endsWithDup = GV.getName().endswith("_dup");
        bool hasInternalLinkage = GV.hasInternalLinkage();
 
-        if (! (isFunction || isConstant || isStruct || endsWithDup) // is not function, constant, struct and does not end with _dup
+        if (! (isFunction || isConstant /* || isStruct */ || endsWithDup) // is not function, constant, struct and does not end with _dup
             && ((hasInternalLinkage && (!isArray || (isArray && !cast<ArrayType>(GV.getValueType())->getArrayElementType()->isAggregateType() ))) // has internal linkage and is not an array, or is an array but the element type is not aggregate
                 || !(isArray || isPointer)) // if it does not have internal linkage, it is not an array or a pointer
             ) {
@@ -459,6 +469,8 @@ struct EDDI : public ModulePass {
         // add consistency checks on I
         #if (SELECTIVE_CHECKING == 1)
         if (I.getParent()->hasNPredecessorsOrMore(2)) 
+        #elif (SELECTIVE_CHECKING == 2)
+        if (0)
         #endif
           addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
         // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
@@ -476,6 +488,8 @@ struct EDDI : public ModulePass {
         // add consistency checks on I
         #if (SELECTIVE_CHECKING == 1)
         if (I.getParent()->hasNPredecessorsOrMore(2)) 
+        #elif (SELECTIVE_CHECKING == 2)
+        if (1)
         #endif
           addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
       }
@@ -495,6 +509,8 @@ struct EDDI : public ModulePass {
           // add consistency checks on I
           #if (SELECTIVE_CHECKING == 1)
           if (I.getParent()->hasNPredecessorsOrMore(2)) 
+          #elif (SELECTIVE_CHECKING == 2)
+          if (1)
           #endif
             addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
         }
@@ -600,7 +616,7 @@ struct EDDI : public ModulePass {
 
       // first store the instructions to compile in the current module
       for (Function &Fn : Md) {
-        if (!Fn.getBasicBlockList().empty() && (FuncAnnotations.find(&Fn) == FuncAnnotations.end() || !(*FuncAnnotations.find(&Fn)).second.startswith("exclude"))) {
+        if (shouldCompile(Fn)) {
           FnList.push_back(&Fn);
         }
       }
@@ -614,7 +630,7 @@ struct EDDI : public ModulePass {
       std::list<Instruction*> InstructionsToRemove;
 
       for (Function &Fn : Md) {
-        if (!Fn.getBasicBlockList().empty() && (FuncAnnotations.find(&Fn) == FuncAnnotations.end() || !(*FuncAnnotations.find(&Fn)).second.startswith("exclude"))) {
+        if (shouldCompile(Fn)) {
           CompiledFuncs.insert(&Fn);
           BasicBlock *ErrBB = BasicBlock::Create(Fn.getContext(), "ErrBB", &Fn);
  

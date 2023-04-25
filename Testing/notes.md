@@ -5,14 +5,14 @@
 ---
 ### **2023/13/04**
 - [ ] Fix global structs
-- [ ] Add intra-function CFC
+- [x] Add intra-function CFC
   - [x] Modify FreeRTOS context switch for runtime sigs backup/restore between context switches
   - [x] Add annotation to Global runtime signatures
   - [x] Think about how to find the program's entry point
   - [x] Solve SigMismatch at vTaskSwitchContext. There are strange things happening in assembly that prevent us from calling the backup/reset/restore signature functions. Take a look at it.
-  - [ ] Fix tasks performing the overflow
-  - [ ] Test the compilation with both rasm and eddi
-- [ ] Implement selective checking on DFG (Data Flow Graph) rather than CFG. In particular, try to insert consistency checks only before A) branches, B) calls and C) returns.
+  - [x] Fix tasks suffering the overflow
+  - [x] Test the compilation with both rasm and eddi
+- [x] Implement selective checking on DFG (Data Flow Graph) rather than CFG. In particular, try to insert consistency checks only before A) branches, B) calls and C) returns.
 
 # Benchmarks
 The benchmarks have been performed executing some benchmarks a number of subsequent times. The `time` results are measured in FreeRTOS ticks.
