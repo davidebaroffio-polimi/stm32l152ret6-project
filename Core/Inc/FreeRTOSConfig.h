@@ -131,7 +131,8 @@ extern void assertionFailed();
 header file. */
 /* USER CODE BEGIN 1 */
 #define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); assertionFailed();}
-#define configINTRA_FUNCTION_CFC
+//#define configINTRA_FUNCTION_CFC
+#define configEDDI_ENABLED
 /* USER CODE END 1 */
 
 /* Definitions that map the FreeRTOS port interrupt handlers to their CMSIS

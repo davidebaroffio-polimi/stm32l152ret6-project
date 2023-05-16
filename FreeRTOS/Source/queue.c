@@ -37,6 +37,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
+#include "mem_utils.h"
 
 #if ( configUSE_CO_ROUTINES == 1 )
     #include "croutine.h"
@@ -2187,7 +2188,7 @@ static BaseType_t prvCopyDataToQueue( Queue_t * const pxQueue,
     }
     else if( xPosition == queueSEND_TO_BACK )
     {
-        ( void ) memcpy( ( void * ) pxQueue->pcWriteTo, pvItemToQueue, ( size_t ) pxQueue->uxItemSize ); /*lint !e961 !e418 !e9087 MISRA exception as the casts are only redundant for some ports, plus previous logic ensures a null pointer can only be passed to memcpy() if the copy size is 0.  Cast to void required by function signature and safe as no alignment requirement and copy length specified in bytes. */
+        ( void ) memcpy_to_duplicate( ( void * ) pxQueue->pcWriteTo, pvItemToQueue, ( size_t ) pxQueue->uxItemSize ); /*lint !e961 !e418 !e9087 MISRA exception as the casts are only redundant for some ports, plus previous logic ensures a null pointer can only be passed to memcpy() if the copy size is 0.  Cast to void required by function signature and safe as no alignment requirement and copy length specified in bytes. */
         pxQueue->pcWriteTo += pxQueue->uxItemSize;                                                       /*lint !e9016 Pointer arithmetic on char types ok, especially in this use case where it is the clearest way of conveying intent. */
 
         if( pxQueue->pcWriteTo >= pxQueue->u.xQueue.pcTail )                                             /*lint !e946 MISRA exception justified as comparison of pointers is the cleanest solution. */
@@ -2239,10 +2240,6 @@ static BaseType_t prvCopyDataToQueue( Queue_t * const pxQueue,
     return xReturn;
 }
 /*-----------------------------------------------------------*/
-
-__attribute__((annotate("to_duplicate"))) void memcpy_to_duplicate(void *__restrict__ __dest, const void *__restrict__ __src, size_t __n) {
-    memcpy(__dest, __src, __n);
-}
 
 static void prvCopyDataFromQueue( Queue_t * const pxQueue,
                                   void * const pvBuffer )

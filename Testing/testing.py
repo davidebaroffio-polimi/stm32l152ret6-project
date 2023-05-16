@@ -18,9 +18,20 @@ class SignalHandler(object):
         self.process.kill()
         self.expired = True
 
-cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
+# works on lab workstation...
+#cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
+
+# works on my pc
+cmd_stlink = "/opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
 
 cmd_gdb = "gdb-multiarch"
+
+done_func_name = b"done_ret_dup"
+sdc_name = b"Incorrect_Result_dup"
+eddi_name = b"DataCorruption_Handler"
+cfcss_name = b"SigMismatch_Handler"
+hard_name = b"HardFault_Handler"
+
 
 seed = 12345
 data = []
@@ -132,7 +143,7 @@ def main():
                 fn = None
                 os.kill(p_gdb.pid, signal.SIGINT)
                 print("Interrupted... ", end = "")
-                ln, debug_data = read(p_gdb, "^[0-9a-zA-Z_ ]+\(.*\)\\n$", debug=True)
+                ln, debug_data = read(p_gdb, "^([0-9a-zA-Z_ ]+\(.*\)\\n|.*picolibc.*\\n)$", debug=True)
                 if ln == None:
                     print("Error detected")
                     print(debug_data)
@@ -157,15 +168,15 @@ def main():
                     write(p_gdb, b'set $bitflip = ' + str.encode(str(bitflip)) + b'\n')
 
                     # Set a breakpoint to Error_Handler => the fault has been detected
-                    write(p_gdb, b'b *DataCorruption_Handler\n')
+                    write(p_gdb, b'b *' + eddi_name + b'\n')
                     # Set a breakpoint to Error_Handler => the fault has been detected
-                    write(p_gdb, b'b *SigMismatch_Handler\n')
+                    write(p_gdb, b'b *' + cfcss_name + b'\n')
                     # Set a breakpoint to HardFault_Handler => the fault has not been detected and it broke the program
-                    write(p_gdb, b'b *HardFault_Handler\n')
+                    write(p_gdb, b'b *' + hard_name + b'\n')
                     # Set a breakpoint to Incorrect_Result => the fault has not been detected and a wrong output was submitted
-                    write(p_gdb, b'b *Incorrect_Result\n')
+                    write(p_gdb, b'b *' + sdc_name + b'\n')
                     # Set a breakpoint to a check location => the fault didn't alter the execution
-                    write(p_gdb, b'b *done\n')
+                    write(p_gdb, b'b *' + done_func_name + b'\n')
 
                     print(what_to_alter, "=", what_to_alter, "^", bitflip, "after", delay, "seconds")
 
@@ -186,30 +197,30 @@ def main():
                         code = -3
                     else:
                         ln_array = ln.decode("utf-8").split(" ")
-                        if(ln_array[-2] == "DataCorruption_Handler"):
+                        if(ln_array[-2] == eddi_name.decode()):
                             code = 1
-                        elif(ln_array[-2] == "SigMismatch_Handler"):
+                        elif(ln_array[-2] == cfcss_name.decode()):
                             code = 2
-                        elif(ln_array[-2] == "HardFault_Handler"):
+                        elif(ln_array[-2] == hard_name.decode()):
                             code = -1
-                        elif(ln_array[-2] == "Incorrect_Result"):
+                        elif(ln_array[-2] == sdc_name.decode()):
                             code = -2
-                        elif(ln_array[-2] == "done"):
+                        elif(ln_array[-2] == done_func_name.decode()):
                             write(p_gdb, b'c\n')
                             ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
                             if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
                                 code = -3
                             else:
                                 ln_array = ln.decode("utf-8").split(" ")
-                                if(ln_array[-2] == "DataCorruption_Handler"):
+                                if(ln_array[-2] == eddi_name.decode()):
                                     code = 1
-                                elif(ln_array[-2] == "SigMismatch_Handler"):
+                                elif(ln_array[-2] == cfcss_name.decode()):
                                     code = 2
-                                elif(ln_array[-2] == "HardFault_Handler"):
+                                elif(ln_array[-2] == hard_name.decode()):
                                     code = -1
-                                elif(ln_array[-2] == "Incorrect_Result"):
+                                elif(ln_array[-2] == sdc_name.decode()):
                                     code = -2
-                                elif(ln_array[-2] == "done"):
+                                elif(ln_array[-2] == done_func_name.decode()):
                                     code = 0
 
                     # Collect results

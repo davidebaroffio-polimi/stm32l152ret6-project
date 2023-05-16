@@ -212,4 +212,8 @@ __attribute__((annotate("include"))) UBaseType_t uxListRemove( ListItem_t * cons
 
     return pxList->uxNumberOfItems;
 }
+
+int traceListRemove(void* ptr) {
+    return 0;
+}
 /*-----------------------------------------------------------*/

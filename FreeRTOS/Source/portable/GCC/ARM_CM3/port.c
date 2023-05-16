@@ -408,7 +408,12 @@ void xPortPendSVHandler( void )
         "										\n"
         "	stmdb r0!, {r4-r11}					\n"/* Save the remaining registers. */
         "	str r0, [r2]						\n"/* Save the new top of stack into the first member of the TCB. */
-        "										\n"
+        #ifdef configEDDI_ENABLED
+        "   ldr r1, pxCurrentTCBConst_dup       \n"
+        "   ldr r12, [r1]                       \n"/* Get the location of the current TCB (its duplicate). */
+        // TODO add check between r12 and r2
+        "   str r0, [r12]                       \n"
+        #endif
         "	stmdb sp!, {r3, r14}				\n"
         "	mov r0, %0							\n"
         "	msr basepri, r0						\n"
@@ -433,6 +438,9 @@ void xPortPendSVHandler( void )
         "										\n"
         "	.align 4							\n"
         "pxCurrentTCBConst: .word pxCurrentTCB	\n"
+        #ifdef configEDDI_ENABLED
+        "pxCurrentTCBConst_dup: .word pxCurrentTCB_dup\n"
+        #endif
         ::"i" ( configMAX_SYSCALL_INTERRUPT_PRIORITY )
     );
 }

@@ -38,7 +38,7 @@ all_cfcss:
 
 	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 out.ll $(STARTUP) -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) $(LD) --specs=nosys.specs -Wl,-Map="prova-new.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group -o out.elf
 
-	#@rm *.ll
+	@rm *.ll
 
 	@echo 'Finished building target: out.elf'
 	@echo ' '
@@ -63,7 +63,7 @@ all_rasm:
 
 	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 out.ll $(STARTUP) -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) $(LD) --specs=nosys.specs -Wl,-Map="prova-new.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group -o out.elf
 
-	#@rm *.ll
+	@rm *.ll
 
 	@echo 'Finished building target: out.elf'
 	@echo ' '
@@ -71,7 +71,7 @@ all_rasm:
 only_out:
 	$(CLANG) --config $(CONFG) -mcpu=cortex-m3 -DUSE_HAL_DRIVER -DSTM32L152xE -std=gnu11 `find Drivers -type f -iname *.c` `find FreeRTOS/Source/portable -type f -iname *.c` out.ll $(STARTUP) -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage $(INC) $(LD) --specs=nosys.specs -Wl,-Map="prova-new.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group -o out.elf
 
-	#@rm *.ll
+	@rm *.ll
 
 	@echo 'Finished building target: out.elf'
 	@echo ' '

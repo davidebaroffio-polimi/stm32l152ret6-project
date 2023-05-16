@@ -331,7 +331,7 @@ struct CFCSS : public ModulePass {
           // insert the actual cfg verification basic blocks in the function
           for (auto &Elem : BBSigs) {
             BasicBlock *BB = Elem.first;
-            if (BB->isEntryBlock()) {
+            if (!BB->isEntryBlock() && BB->getParent() == &Fn) { 
               createCFGVerificationBB(*BB, BBSigs, &NewBBs, *ErrBB, G, D);
             }
           }

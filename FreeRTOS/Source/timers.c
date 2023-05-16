@@ -38,6 +38,7 @@
 #include "task.h"
 #include "queue.h"
 #include "timers.h"
+#include "mem_utils.h"
 
 #if ( INCLUDE_xTimerPendFunctionCall == 1 ) && ( configUSE_TIMERS == 0 )
     #error configUSE_TIMERS must be set to 1 to make the xTimerPendFunctionCall() function available.
@@ -293,7 +294,7 @@
         {
             Timer_t * pxNewTimer;
 
-            pxNewTimer = ( Timer_t * ) pvPortMalloc( sizeof( Timer_t ) ); /*lint !e9087 !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack, and the first member of Timer_t is always a pointer to the timer's mame. */
+            pxNewTimer = ( Timer_t * ) pvPortMalloc_to_duplicate( sizeof( Timer_t ) ); /*lint !e9087 !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack, and the first member of Timer_t is always a pointer to the timer's mame. */
 
             if( pxNewTimer != NULL )
             {
@@ -314,7 +315,7 @@
 
         /* Timer task control block and stack */
         static StaticTask_t Timer_TCB;
-        static StackType_t  Timer_Stack[configTIMER_TASK_STACK_DEPTH];
+        __attribute__((annotate("exclude"))) static StackType_t  Timer_Stack[configTIMER_TASK_STACK_DEPTH];
         /*
         vApplicationGetTimerTaskMemory gets called when configSUPPORT_STATIC_ALLOCATION
         equals to 1 and is required for static memory allocation support.
@@ -599,7 +600,7 @@
             /* Query the timers list to see if it contains any timers, and if so,
              * obtain the time at which the next timer will expire. */
             xNextExpireTime = prvGetNextExpireTime( &xListWasEmpty );
-
+            
             /* If a timer has expired, process it.  Otherwise, block this task
              * until either a timer does expire, or a command is received. */
             prvProcessTimerOrBlockTask( xNextExpireTime, xListWasEmpty );
@@ -766,15 +767,6 @@
     }
 /*-----------------------------------------------------------*/
 
-    /**
-     * TODO this function cannot be compiled with EDDIVerify since it calls xQueueReceive,
-     * which calls prvCopyDataFromQueue, which calls memcpy. 
-     * 
-     * xMessage and its copy should be passed through the function calls, yet only
-     * the original is filled by the memcpy, creating an inconsistency in this function.
-     * 
-     * Find a way to fix this...
-     */
     __attribute__((annotate("include"))) static void prvProcessReceivedCommands( void )
     {
         DaemonTaskMessage_t xMessage;
@@ -896,7 +888,7 @@
                                  * allocated. */
                                 if( ( pxTimer->ucStatus & tmrSTATUS_IS_STATICALLY_ALLOCATED ) == ( uint8_t ) 0 )
                                 {
-                                    vPortFree( pxTimer );
+                                    vPortFree_to_duplicate( pxTimer );
                                 }
                                 else
                                 {

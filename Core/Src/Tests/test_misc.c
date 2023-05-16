@@ -39,6 +39,10 @@ void vTaskBufferTestSend ( void * pvParameters ) {
         }
 
         vMessageBufferDelete(xMessageBuffer);
+
+        if (spaceAvailable != 8 && isEmpty != 0) {
+            Incorrect_Result();
+        }
     }
 }
 
@@ -57,6 +61,10 @@ void vTaskBufferTestReceive ( void * pvParameters ) {
         while (xMessageBuffer != NULL) { // wait for the other task to delete it
             vTaskDelay(5);
         }
+
+        if (data != 8) {
+            Incorrect_Result();
+        }
     }
 }
 
@@ -65,6 +73,7 @@ void vTimerCallback( TimerHandle_t xTimer ) {
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 }
 
+#if configUSE_TIMERS == 1
 void vTaskTimerTest ( void * pvParameters ) {
     int isDeleted = pdPASS;
 
@@ -98,29 +107,31 @@ void vTaskTimerTest ( void * pvParameters ) {
         while(xTimerIsTimerActive(xTimer) != pdFALSE) {
             vTaskDelay(5);
         }
+        vTaskDelay(5);
 
         int periodChanged = xTimerChangePeriod(xTimer, 200, 1000);
         vTimerSetReloadMode(xTimer, pdTRUE);
-        int currentTime = xTaskGetTickCount();
-        vTaskDelay(50);
-        int expiryTime = xTimerGetExpiryTime(xTimer);
 
         int reloadMode = uxTimerGetReloadMode(xTimer);
 
         if (period != 100) {
             if (periodChanged == pdPASS) {
-                for (int i = 0; i<100; i++) {
-                    if (xTimerGetPeriod(xTimer) == 200) {
-                        continue;
-                    }
-                    vTaskDelay(50);
+            for (int i = 0; i<100; i++) {
+                if (xTimerGetPeriod(xTimer) == 200) {
+                    continue;
                 }
+                vTaskDelay(50);
             }
-            else {
-                Incorrect_Result();
+        }
+        else {
+            Incorrect_Result();
             }
         }
 
         isDeleted = xTimerDelete(xTimer, 1000);
+        if (isDeleted == pdFAIL) {
+            Incorrect_Result();
+        }
     }
 }
+#endif

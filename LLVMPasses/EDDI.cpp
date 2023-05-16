@@ -31,9 +31,12 @@ using namespace llvm;
 /**
  * - 0: EDDI (Add checks at every basic block)
  * - 1: FDSC (Add checks only at basic blocks with more than one predecessor)  
- * - 2: Add consistency checks before conditional branches, returns and calls
  */
 #define SELECTIVE_CHECKING 1
+
+#define CHECK_AT_STORES
+#define CHECK_AT_CALLS
+#define CHECK_AT_BRANCH
 
 namespace {
 struct EDDI : public ModulePass {
@@ -298,22 +301,23 @@ struct EDDI : public ModulePass {
             }
             // if the operand is an array we have to compare all its elements
             else if (Original->getType()->isArrayTy()) {
-              
-              int arraysize = Original->getType()->getArrayNumElements();
+              if (!Original->getType()->getArrayElementType()->isAggregateType()) {
+                int arraysize = Original->getType()->getArrayNumElements();
 
-              for (int i=0; i<arraysize; i++) {
-                Value *OriginalElem = B.CreateExtractValue(Original, i);
-                Value *CopyElem = B.CreateExtractValue(Copy, i);
-                DuplicatedInstructionMap.insert(std::pair<Value*, Value*>(OriginalElem, CopyElem));
-                
-                if (OriginalElem->getType()->isPointerTy()) {
-                  Value *CmpInstr = comparePtrs(*OriginalElem, *CopyElem, B);
-                  if (CmpInstr != NULL) {
-                    CmpInstructions.push_back(CmpInstr);
+                for (int i=0; i<arraysize; i++) {
+                  Value *OriginalElem = B.CreateExtractValue(Original, i);
+                  Value *CopyElem = B.CreateExtractValue(Copy, i);
+                  DuplicatedInstructionMap.insert(std::pair<Value*, Value*>(OriginalElem, CopyElem));
+                  
+                  if (OriginalElem->getType()->isPointerTy()) {
+                    Value *CmpInstr = comparePtrs(*OriginalElem, *CopyElem, B);
+                    if (CmpInstr != NULL) {
+                      CmpInstructions.push_back(CmpInstr);
+                    }
                   }
-                }
-                else {
-                  CmpInstructions.push_back(B.CreateCmp(CmpInst::ICMP_EQ, OriginalElem, CopyElem));
+                  else {
+                    CmpInstructions.push_back(B.CreateCmp(CmpInst::ICMP_EQ, OriginalElem, CopyElem));
+                  }
                 }
               }
             }
@@ -381,8 +385,33 @@ struct EDDI : public ModulePass {
       return FnDup;
     }
 
+    // Given Fn, it returns the version of the function without the duplicated arguments, or the 
+    // function Fn itself if it is already the version without duplicated arguments
+    Function *getFunctionFromDuplicate(Function *Fn) {
+      // If Fn ends with "_dup" we have already the duplicated function.
+      // If Fn is NULL, it means that we don't have a duplicate
+      if (Fn == NULL || !Fn->getName().endswith("_dup")){
+        return Fn;
+      }
+
+      // Otherwise, we try to get the non-"_dup" version
+      Function *FnDup = Fn->getParent()->getFunction(Fn->getName().str().substr(0, Fn->getName().str().length()-8));
+      if (FnDup == NULL) {
+        FnDup = Fn->getParent()->getFunction(Fn->getName().str().substr(0, Fn->getName().str().length()-4));
+      }
+      return FnDup;
+    }
+
     void duplicateGlobals (Module &Md, std::map<Value *, Value *> &DuplicatedInstructionMap) {
+      Value *RuntimeSig;
+      Value *RetSig;
       for (GlobalVariable &GV : Md.globals()) {
+        if (!isa<Function>(GV) && FuncAnnotations.find(cast<Function>(&GV)) != FuncAnnotations.end()) {
+          if ((FuncAnnotations.find(cast<Function>(&GV)))->second.startswith("runtime_sig") 
+              || (FuncAnnotations.find(cast<Function>(&GV)))->second.startswith("run_adj_sig")) {
+            continue;
+          }
+        }
         /**
          * The global variable is duplicated if all the following hold:
          * - It is not a function
@@ -393,17 +422,21 @@ struct EDDI : public ModulePass {
          *        a) It is not an array
          *        b) It is an array but its elements are neither structs nor arrays
         */
-       bool isFunction = GV.getType()->isFunctionTy();
-       bool isConstant = GV.isConstant();
-       bool isStruct = GV.getValueType()->isStructTy();
-       bool isArray = GV.getValueType()->isArrayTy();
-       bool isPointer = GV.getValueType()->isOpaquePointerTy();
-       bool endsWithDup = GV.getName().endswith("_dup");
-       bool hasInternalLinkage = GV.hasInternalLinkage();
+        bool isFunction = GV.getType()->isFunctionTy();
+        bool isConstant = GV.isConstant();
+        bool isStruct = GV.getValueType()->isStructTy();
+        bool isArray = GV.getValueType()->isArrayTy();
+        bool isPointer = GV.getValueType()->isOpaquePointerTy();
+        bool endsWithDup = GV.getName().endswith("_dup");
+        bool hasInternalLinkage = GV.hasInternalLinkage();
+        bool isMetadataInfo = GV.getSection() == "llvm.metadata";
+        bool toExclude = !isa<Function>(GV) && 
+                        FuncAnnotations.find(cast<Function>(&GV)) != FuncAnnotations.end() && 
+                        (FuncAnnotations.find(cast<Function>(&GV)))->second.startswith("exclude");
 
-        if (! (isFunction || isConstant /* || isStruct */ || endsWithDup) // is not function, constant, struct and does not end with _dup
-            && ((hasInternalLinkage && (!isArray || (isArray && !cast<ArrayType>(GV.getValueType())->getArrayElementType()->isAggregateType() ))) // has internal linkage and is not an array, or is an array but the element type is not aggregate
-                || !(isArray || isPointer)) // if it does not have internal linkage, it is not an array or a pointer
+        if (! (isFunction || isConstant || endsWithDup || isMetadataInfo || toExclude) // is not function, constant, struct and does not end with _dup
+            /* && ((hasInternalLinkage && (!isArray || (isArray && !cast<ArrayType>(GV.getValueType())->getArrayElementType()->isAggregateType() ))) // has internal linkage and is not an array, or is an array but the element type is not aggregate
+                || !isArray) */ // if it does not have internal linkage, it is not an array or a pointer
             ) {
           Constant *Initializer = NULL;
           if (GV.hasInitializer()) {
@@ -467,12 +500,13 @@ struct EDDI : public ModulePass {
         duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
         // add consistency checks on I
-        #if (SELECTIVE_CHECKING == 1)
-        if (I.getParent()->hasNPredecessorsOrMore(2)) 
-        #elif (SELECTIVE_CHECKING == 2)
-        if (0)
-        #endif
+
+        #ifdef CHECK_AT_STORES
+          #if (SELECTIVE_CHECKING == 1)
+          if (I.getParent()->hasNPredecessorsOrMore(2)) 
+          #endif
           addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+        #endif
         // it may happen that I duplicate a store but don't change its operands, if that happens I just remove the duplicate
         if (IClone->isIdenticalTo(&I)) {
           IClone->eraseFromParent();
@@ -486,12 +520,12 @@ struct EDDI : public ModulePass {
         duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
         // add consistency checks on I
-        #if (SELECTIVE_CHECKING == 1)
-        if (I.getParent()->hasNPredecessorsOrMore(2)) 
-        #elif (SELECTIVE_CHECKING == 2)
-        if (1)
-        #endif
+        #ifdef CHECK_AT_BRANCH
+          #if (SELECTIVE_CHECKING == 1)
+          if (I.getParent()->hasNPredecessorsOrMore(2)) 
+          #endif
           addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+        #endif
       }
 
       // if the istruction is a call, we duplicate the operands and add consistency checks
@@ -499,7 +533,9 @@ struct EDDI : public ModulePass {
         CallBase *CInstr = cast<CallBase>(&I);
         // there are some instructions that can be annotated with "to_duplicate" in order to tell the pass
         // to duplicate the function call.
-        if ((FuncAnnotations.find(CInstr->getCalledFunction()) != FuncAnnotations.end() && (*FuncAnnotations.find(CInstr->getCalledFunction())).second.startswith("to_duplicate"))) {
+        Function *Callee = CInstr->getCalledFunction();
+        Callee = getFunctionFromDuplicate(Callee);
+        if ((FuncAnnotations.find(Callee) != FuncAnnotations.end() && (*FuncAnnotations.find(Callee)).second.startswith("to_duplicate"))) {
           // duplicate the instruction
           cloneInstr(*CInstr, DuplicatedInstructionMap);
           
@@ -507,22 +543,24 @@ struct EDDI : public ModulePass {
           duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
           // add consistency checks on I
-          #if (SELECTIVE_CHECKING == 1)
-          if (I.getParent()->hasNPredecessorsOrMore(2)) 
-          #elif (SELECTIVE_CHECKING == 2)
-          if (1)
-          #endif
+          #ifdef CHECK_AT_CALLS
+            #if (SELECTIVE_CHECKING == 1)
+            if (I.getParent()->hasNPredecessorsOrMore(2)) 
+            #endif
             addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+          #endif
         }
         else {
           // duplicate the operands
           duplicateOperands(I, DuplicatedInstructionMap, ErrBB);
 
           // add consistency checks on I
-          #if (SELECTIVE_CHECKING == 1)
-          if (I.getParent()->hasNPredecessorsOrMore(2)) 
-          #endif
+          #ifdef CHECK_AT_CALLS
+            #if (SELECTIVE_CHECKING == 1)
+            if (I.getParent()->hasNPredecessorsOrMore(2)) 
+            #endif
             addConsistencyChecks(I, DuplicatedInstructionMap, ErrBB);
+          #endif
 
           // get the function with the duplicated signature, if it exists
           IRBuilder<> B(I.getNextNonDebugInstruction());

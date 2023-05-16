@@ -71,6 +71,7 @@ void vTaskCode1( void * pvParameters );
 void vTaskCode2( void * pvParameters );
 void vTaskDES( void * pvParameters );
 void vTaskMM(void * pvParameters);
+void vTaskDone(void * pvParameters);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -91,12 +92,13 @@ __attribute__((annotate("include"))) int main(void)
   //      V V V
   int xCanStartScheduler = 0;
 #if SCOPE == 1 // microbenchmarks
-  BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 400, NULL, tskIDLE_PRIORITY + 5, NULL );
+  BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 700, NULL, tskIDLE_PRIORITY + 5, NULL );
   BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 500, NULL, tskIDLE_PRIORITY+7, NULL); 
   BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 500, NULL, tskIDLE_PRIORITY+6, NULL);
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer", 700, NULL, tskIDLE_PRIORITY+8, NULL); 
   BaseType_t xRetQ = xTaskCreate( vTaskTestQueue, "queue", 500, NULL, tskIDLE_PRIORITY + 3, NULL);
-  if (xRetQ & xRet5 & xRet6 & xRet7 & xRet8  == pdPASS)
+  BaseType_t xRetD = xTaskCreate( vTaskDone, "done", 200, NULL, tskIDLE_PRIORITY, NULL);
+  if (xRetQ & xRet5 & xRet6 & xRet7 & xRet8 & xRetD == pdPASS)
 
 #elif SCOPE == 2 // DES benchmark
   BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 1200, NULL, tskIDLE_PRIORITY + 8, NULL);
@@ -374,6 +376,14 @@ __attribute__((annotate("include"))) void vTaskMM( void * pvParameters )
       int end = xTaskGetTickCount();
       benchmark_res(end-start);
     }
+}
+
+// periodically call done() to assure gdb that everything is going fine
+void vTaskDone(void * pvParameters) {
+  for ( ;; ) {
+    vTaskDelay(200);
+    done();
+  }
 }
 
 /* USER CODE BEGIN 4 */

@@ -752,6 +752,10 @@
     #define traceSTREAM_BUFFER_RECEIVE_FROM_ISR( xStreamBuffer, xReceivedLength )
 #endif
 
+#ifndef traceLIST_REMOVE_ITEM
+    #define traceLIST_REMOVE_ITEM( pxItemToRemove ) { traceListRemove(pxItemToRemove); }
+#endif
+
 #ifndef configGENERATE_RUN_TIME_STATS
     #define configGENERATE_RUN_TIME_STATS    0
 #endif

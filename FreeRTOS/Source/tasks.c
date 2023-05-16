@@ -40,6 +40,7 @@
 #include "task.h"
 #include "timers.h"
 #include "stack_macros.h"
+#include "mem_utils.h"
 
 /* Lint e9021, e961 and e750 are suppressed as a MISRA exception justified
  * because the MPU ports require MPU_WRAPPERS_INCLUDED_FROM_API_FILE to be defined
@@ -579,7 +580,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB ) PRIVILEGED_FUNCTION;
 
     /* Idle task control block and stack */
     static StaticTask_t Idle_TCB;
-    static StackType_t  Idle_Stack[configMINIMAL_STACK_SIZE];
+    __attribute__((annotate("exclude"))) static StackType_t  Idle_Stack[configMINIMAL_STACK_SIZE];
     /*
     vApplicationGetIdleTaskMemory gets called when configSUPPORT_STATIC_ALLOCATION
     equals to 1 and is required for static memory allocation support.
@@ -788,7 +789,7 @@ static void prvAddNewTaskToReadyList( TCB_t * pxNewTCB ) PRIVILEGED_FUNCTION;
                 if( pxStack != NULL )
                 {
                     /* Allocate space for the TCB. */
-                    pxNewTCB = ( TCB_t * ) pvPortMalloc( sizeof( TCB_t ) ); /*lint !e9087 !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack, and the first member of TCB_t is always a pointer to the task's stack. */
+                    pxNewTCB = ( TCB_t * ) pvPortMalloc_to_duplicate( sizeof( TCB_t ) ); /*lint !e9087 !e9079 All values returned by pvPortMalloc() have at least the alignment required by the MCU's stack, and the first member of TCB_t is always a pointer to the task's stack. */
 
                     if( pxNewTCB != NULL )
                     {
@@ -2828,6 +2829,7 @@ __attribute__((annotate("include"))) BaseType_t xTaskIncrementTick( void )
                         mtCOVERAGE_TEST_MARKER();
                     }
 
+                    traceLIST_REMOVE_ITEM(&( pxTCB->xStateListItem ));
                     /* It is time to remove the item from the Blocked state. */
                     listREMOVE_ITEM( &( pxTCB->xStateListItem ) );
 
@@ -2903,7 +2905,6 @@ __attribute__((annotate("include"))) BaseType_t xTaskIncrementTick( void )
             {
                 if( xYieldPending != pdFALSE )
                 {
-                    //done();
                     xSwitchRequired = pdTRUE;
                 }
                 else
@@ -4005,13 +4006,13 @@ __attribute__((annotate("include"))) static void prvCheckTasksWaitingTermination
                     /* Both the stack and TCB were allocated dynamically, so both
                      * must be freed. */
                     vPortFreeStack( pxTCB->pxStack );
-                    vPortFree( pxTCB );
+                    vPortFree_to_duplicate( pxTCB );
                 }
                 else if( pxTCB->ucStaticallyAllocated == tskSTATICALLY_ALLOCATED_STACK_ONLY )
                 {
                     /* Only the stack was statically allocated, so the TCB is the
                      * only memory that must be freed. */
-                    vPortFree( pxTCB );
+                    vPortFree_to_duplicate( pxTCB );
                 }
                 else
                 {

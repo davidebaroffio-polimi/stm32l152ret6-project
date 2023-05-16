@@ -48,8 +48,7 @@ xTaskCheckForTimeOut                [x] // used by queue.c
 #include "test.h"
 #include "task.h"
 
-StackType_t xStack[ configMINIMAL_STACK_SIZE ];
-StaticTask_t xTaskBuffer;
+__attribute__((annotate("exclude"))) StackType_t xStack[ configMINIMAL_STACK_SIZE ];
 
 void vTaskUseless( void * pvParameters ) {
     
@@ -58,7 +57,12 @@ void vTaskUseless( void * pvParameters ) {
     }
 }
 
-void fnTest1() {
+void fnTaskTest() {
+    
+    StaticTask_t xTaskBuffer;
+
+    int numTasks = uxTaskGetNumberOfTasks();
+
     // create static task
     TaskHandle_t xHandle = xTaskCreateStatic(vTaskUseless,      // function
                                              "uselessTask\0",   // task name
@@ -72,8 +76,10 @@ void fnTest1() {
     // suspend
     vTaskSuspend(xHandle);
     // get priority and check if task is suspended
-    if( uxTaskPriorityGet( xHandle ) != tskIDLE_PRIORITY+1 && 
-        eTaskGetState( xHandle ) != eSuspended ) {
+    if( uxTaskPriorityGet( xHandle ) != tskIDLE_PRIORITY+1 || 
+        eTaskGetState( xHandle ) != eSuspended ||
+        uxTaskGetNumberOfTasks() != numTasks +1 || 
+        xTaskGetSchedulerState() != taskSCHEDULER_RUNNING) {
         Incorrect_Result();
     }
     // resume
@@ -82,29 +88,13 @@ void fnTest1() {
     vTaskDelete(xHandle);
 }
 
-void fnTest2() {
-    char * name = "createdTask\0";
-
-    int numTasks = uxTaskGetNumberOfTasks();
-    TaskHandle_t xHandle = NULL;
-    
-    xTaskCreate(vTaskUseless, name, configMINIMAL_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
-    if (uxTaskGetNumberOfTasks() != numTasks +1 || 
-        xTaskGetSchedulerState() != taskSCHEDULER_RUNNING ||
-        uxTaskGetStackHighWaterMark(xHandle) <= 0) {
-        Incorrect_Result();
-    }
-    
-    vTaskDelete(xHandle);
-}
-
 void vTaskTaskTest ( void * pvParameters ) {
 
-    void (*functions[1])() = {fnTest1};
+    //void (*functions[2])() = {fnTest1,fnTest2};
 
     int i = 0;
     for ( ;; ) {
-        vBackupRestoreCallVoidFunction(functions[i%1]);
+        fnTaskTest();
         i++;
         vTaskDelay(5);
     }

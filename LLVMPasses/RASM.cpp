@@ -27,7 +27,7 @@ using namespace llvm;
  * - 0: Disabled
  * - 1: Enabled
 */
-#define INTRA_FUNCTION_CFC 1
+#define INTRA_FUNCTION_CFC 0
 #define INIT_SIGNATURE -0xDEAD // The same value has to be used as initializer for the signatures in the code
 
 /**
@@ -286,10 +286,6 @@ struct RASM : public ModulePass {
           // Restore the ret signature after the call
           B.SetInsertPoint(CallIn->getNextNonDebugInstruction());
           B.CreateStore(RetSigBackup, &RetSig);
-
-          if (retSig == 2253 || retSig == 2255) {
-            errs() << BB << "\n";
-          }
         }
         else
         #endif

@@ -57,10 +57,7 @@ void fnTestQueue1() {
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
     i = 0;
     int res = xQueueReceive(globalQueuehandle, &i, 200);
-    if (i == 1 && res == pdTRUE) { // we have received the value and it is indeed 1
-        done();
-    }
-    else {
+    if (i != 1 || res != pdTRUE) { // we have received the value and it is indeed 1
         Incorrect_Result();
     }
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
