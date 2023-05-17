@@ -5,10 +5,10 @@ We are going to perform testing in memory and registers with the following confi
 EDDI
 - EDDI + CFCSS                                  x
 - EDDI + RASM                                   x
-- EDDI + RASM intra-function                    x
+- EDDI + RASM intra-function                    
 FDSC (Full Duplication with Selective Checking)
 - FDSC + CFCSS                                  x
-- FDSC + RASM
+- FDSC + RASM                                   x
 - FDSC + RASM intra-function
 SEDDI (Selective-EDDI checking only branch and call instructions)
 - SEDDI + CFCSS

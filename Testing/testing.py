@@ -32,6 +32,7 @@ eddi_name = b"DataCorruption_Handler"
 cfcss_name = b"SigMismatch_Handler"
 hard_name = b"HardFault_Handler"
 
+num_attempts = 5000
 
 seed = 12345
 data = []
@@ -106,7 +107,7 @@ def read(process, pattern, timeout = 2.0, debug=False):
 def main():
     faults = 0
     attempt = 0
-    for attempt in range(0, 15000):
+    for attempt in range(0, num_attempts):
     #while True:
         pid = os.fork()
         if pid == 0:
@@ -275,6 +276,9 @@ if __name__ == "__main__":
         print("Usage: python3 testing.py [registers|memory] <elf_filename>")
         exit(0)
         
+    if scope == 'memory':
+        num_attempts = num_attempts*2
+
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
     signal.signal(signal.SIGINT, handler)
     begin = time.time()

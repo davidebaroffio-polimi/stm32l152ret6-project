@@ -1,14 +1,14 @@
 fn_name
 vTaskCode1
 vTaskCode2
-vListInitialise
 HAL_UART_MspDeInit
 fnTestQueue1
 fnTestQueue2
+getbit
 xTaskDelayUntil
 fnTestQueue3
 vTaskTestQueue
-vTaskDelete
+vListInitialise
 vListInitialiseItem
 vListInsertEnd
 vListInsert
@@ -20,7 +20,7 @@ SystemCoreClockUpdate
 assertionFailed
 xStreamBufferGenericCreate
 vTaskUseless
-fnTest1
+fnTaskTest
 vTaskTaskTest
 memcpy_to_duplicate
 pvPortMalloc_to_duplicate
@@ -43,7 +43,6 @@ DebugMon_Handler
 PendSV_Handler
 SysTick_Handler
 des
-getbit
 ks
 cyfun
 des_init
@@ -97,7 +96,8 @@ vTimerSetTimerNumber
 vApplicationGetIdleTaskMemory
 xTaskCreateStatic
 xTaskCreate
-vStreamBufferDelete
+vTaskDelete
+xEventGroupWaitBits
 vTaskDelay
 eTaskGetState
 uxTaskPriorityGet
@@ -165,7 +165,7 @@ xEventGroupCreateStatic
 xEventGroupCreate
 xEventGroupSync
 xEventGroupSetBits
-xEventGroupWaitBits
+xTaskGenericNotifyStateClear_ret
 prvTestWaitCondition
 xEventGroupClearBits
 xEventGroupClearBitsFromISR
@@ -186,14 +186,13 @@ assertionFailed_dup
 xStreamBufferGenericCreate_dup
 prvInitialiseNewStreamBuffer
 xStreamBufferGenericCreateStatic
-xQueuePeekFromISR_ret
+vStreamBufferDelete
 xStreamBufferReset
 xStreamBufferSetTriggerLevel
 xStreamBufferSpacesAvailable
 xStreamBufferBytesAvailable
 prvBytesInBuffer
 xStreamBufferSend
-prvTestWaitCondition_ret
 prvWriteMessageToBuffer
 prvWriteBytesToBuffer
 xStreamBufferSendFromISR
@@ -318,7 +317,6 @@ ulTaskGenericNotifyTake_ret
 xTaskGenericNotifyWait_ret
 xTaskGenericNotify_ret
 xTaskGenericNotifyFromISR_ret
-xTaskGenericNotifyStateClear_ret
 ulTaskGenericNotifyValueClear_ret
 prvTaskIsTaskSuspended_ret
 prvListTasksWithinSingleList_ret
@@ -329,6 +327,7 @@ xEventGroupSync_ret
 xEventGroupSetBits_ret
 xEventGroupWaitBits_ret
 xQueueGiveFromISR_dup
+prvTestWaitCondition_ret
 xEventGroupClearBits_ret
 xEventGroupClearBitsFromISR_ret
 xEventGroupGetBitsFromISR_ret
@@ -380,6 +379,7 @@ xQueueGiveFromISR_ret
 xQueueReceive_ret
 xQueuePeek_ret
 xQueueReceiveFromISR_ret
+xQueuePeekFromISR_ret
 uxQueueMessagesWaiting_ret
 uxQueueSpacesAvailable_ret
 uxQueueMessagesWaitingFromISR_ret
@@ -403,7 +403,7 @@ Incorrect_Result_dup
 done_dup
 SystemCoreClockUpdate_dup
 vTaskUseless_dup
-fnTest1_dup
+fnTaskTest_dup
 vTaskTaskTest_dup
 memcpy_to_duplicate_dup
 pvPortMalloc_to_duplicate_dup
@@ -449,8 +449,8 @@ _link_dup
 _fork_dup
 _execve_dup
 xTimerGenericCommand_dup
-prvProcessReceivedCommands_dup
 prvTimerTask_dup
+prvProcessReceivedCommands_dup
 prvSampleTimeNow_dup
 prvInsertTimerInActiveList_dup
 prvReloadTimer_dup
@@ -553,8 +553,8 @@ xEventGroupWaitBits_dup
 prvTestWaitCondition_dup
 xEventGroupClearBits_dup
 xEventGroupClearBitsFromISR_dup
-vEventGroupClearBitsCallback_dup
 xEventGroupGetBitsFromISR_dup
+vEventGroupClearBitsCallback_dup
 vEventGroupDelete_dup
 vEventGroupSetBitsCallback_dup
 xEventGroupSetBitsFromISR_dup
