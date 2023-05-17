@@ -86,7 +86,7 @@ void fnTestQueue2() {
                                  &xStaticQueue );
     int i1 = 1;
     int i2 = 2;
-    vTaskDelay(5);
+    vTaskDelay(1);
     for (int i = 0; i<2; i++) {
         xQueueSendToBack(xQueue, &i2, 0); // send 2
         xQueueSendToFront(xQueue, &i1, 0); // send 1
@@ -124,7 +124,7 @@ void fnTestQueue3() {
     xQueueHandle queuehandle = xQueueCreate(1, ITEM_SIZE);
 
     vQueueAddToRegistry(queuehandle, "testQueue\0");
-    vTaskDelay(5);
+    vTaskDelay(1);
 
     int i1 = 1;
     xQueueSend(queuehandle, &i1, 0);
@@ -138,12 +138,12 @@ void fnTestQueue3() {
     int i2 = 2;
     xQueueOverwrite(queuehandle, &i2);
 
-    vTaskDelay(5);
+    vTaskDelay(1);
 
     vQueueUnregisterQueue(queuehandle);
     vQueueDelete(queuehandle);
 
-    vTaskDelay(5);
+    vTaskDelay(1);
 }
 
 void vTaskTestQueue( void *pvParameters) {

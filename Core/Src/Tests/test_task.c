@@ -53,7 +53,7 @@ __attribute__((annotate("exclude"))) StackType_t xStack[ configMINIMAL_STACK_SIZ
 void vTaskUseless( void * pvParameters ) {
     
     for ( ;; ) {
-        vTaskDelay(5);
+        vTaskDelay(1);
     }
 }
 
@@ -96,6 +96,6 @@ void vTaskTaskTest ( void * pvParameters ) {
     for ( ;; ) {
         fnTaskTest();
         i++;
-        vTaskDelay(5);
+        vTaskDelay(1);
     }
 }
