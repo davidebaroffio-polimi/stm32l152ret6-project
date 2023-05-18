@@ -27,7 +27,7 @@ void vTaskBufferTestSend ( void * pvParameters ) {
 
     for ( ;; ) {
         // When a message is written to the message buffer an additional sizeof( size_t ) bytes are also written to store the message's length. sizeof( size_t ) is typically 4 bytes on a 32-bit architecture, so on most 32-bit architectures a 10 byte message will take up 14 bytes of message buffer space.
-        vTaskDelay(1);
+        vTaskDelay(5);
         xMessageBuffer = xMessageBufferCreate(8); // we allow space for an int and the size_t 
         int spaceAvailable = xMessageBufferSpacesAvailable(xMessageBuffer);
         int isEmpty = xMessageBufferIsEmpty(xMessageBuffer); // should be pdTRUE
@@ -35,7 +35,7 @@ void vTaskBufferTestSend ( void * pvParameters ) {
         xMessageBufferSend(xMessageBuffer, &spaceAvailable, sizeof(int), 0);
 
         while (xMessageBufferIsFull(xMessageBuffer) == pdTRUE) { // wait for the other task to read the buffer
-            vTaskDelay(1);
+            vTaskDelay(5);
         }
 
         vMessageBufferDelete(xMessageBuffer);
@@ -51,7 +51,7 @@ void vTaskBufferTestReceive ( void * pvParameters ) {
 
     for ( ;; ) {
         while (xMessageBuffer == NULL) {
-            vTaskDelay(1);
+            vTaskDelay(5);
         }
 
         int data;
@@ -59,7 +59,7 @@ void vTaskBufferTestReceive ( void * pvParameters ) {
 
         //xMessageBufferReset(xMessageBuffer);
         while (xMessageBuffer != NULL) { // wait for the other task to delete it
-            vTaskDelay(1);
+            vTaskDelay(5);
         }
 
         if (data != 8) {
@@ -105,9 +105,9 @@ void vTaskTimerTest ( void * pvParameters ) {
             period = xTimerGetPeriod(xTimer);
         }
         while(xTimerIsTimerActive(xTimer) != pdFALSE) {
-            vTaskDelay(1);
+            vTaskDelay(5);
         }
-        vTaskDelay(1);
+        vTaskDelay(5);
 
         int periodChanged = xTimerChangePeriod(xTimer, 200, 1000);
         vTimerSetReloadMode(xTimer, pdTRUE);
@@ -120,7 +120,7 @@ void vTaskTimerTest ( void * pvParameters ) {
                 if (xTimerGetPeriod(xTimer) == 200) {
                     continue;
                 }
-                vTaskDelay(1);
+                vTaskDelay(5);
             }
         }
         else {

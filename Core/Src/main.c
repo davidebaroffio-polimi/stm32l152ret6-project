@@ -97,7 +97,7 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 700, NULL, tskIDLE_PRIORITY+6, NULL);
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer", 700, NULL, tskIDLE_PRIORITY+8, NULL); 
   BaseType_t xRetQ = xTaskCreate( vTaskTestQueue, "queue", 500, NULL, tskIDLE_PRIORITY + 3, NULL);
-  BaseType_t xRetD = xTaskCreate( vTaskDone, "done", 200, NULL, tskIDLE_PRIORITY, NULL);
+  BaseType_t xRetD = xTaskCreate( vTaskDone, "done", 200, NULL, tskIDLE_PRIORITY+10, NULL);
   if (xRetQ & xRet5 & xRet6 & xRet7 & xRet8 & xRetD == pdPASS)
 
 #elif SCOPE == 2 // DES benchmark
@@ -349,7 +349,7 @@ int benchmark_res(int res) {
 /* Task to be created. */
 __attribute__((annotate("include"))) void vTaskDES( void * pvParameters )
 {
-    vTaskDelay(10);
+    vTaskDelay(50);
     
     for( ;; )
     {
