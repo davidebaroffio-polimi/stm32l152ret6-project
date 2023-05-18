@@ -19,22 +19,24 @@ class SignalHandler(object):
         self.expired = True
 
 # works on lab workstation...
-#cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
+cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
 
 # works on my pc
-cmd_stlink = "/opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
+#cmd_stlink = "/opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
 
 cmd_gdb = "gdb-multiarch"
 
-done_func_name = b"done_ret_dup"
-sdc_name = b"Incorrect_Result_dup"
+#done_func_name = b"done_ret_dup"
+done_func_name = b"done"
+#sdc_name = b"Incorrect_Result_dup"
+sdc_name = b"Incorrect_Result"
 eddi_name = b"DataCorruption_Handler"
 cfcss_name = b"SigMismatch_Handler"
 hard_name = b"HardFault_Handler"
 
-num_attempts = 5000
+num_attempts = 10000
 
-seed = 12345
+seed = 123456
 data = []
 scope = None
 fieldnames = ['attempt', 'stop_addr', 'stop_fn', 'delay', 'target', 'bitflip', 'code', 'seed']
@@ -136,7 +138,7 @@ def main():
                 print("Connected... ", end="")
                 
                 # Add some delay (<500ms)
-                delay = (random.randint(attempt, attempt+50) / 5000) % 3000
+                delay = 0.2 + (random.randint(attempt, attempt+50) % 3000)/1000
                 time.sleep(delay)
 
                 # Interrupt the execution for the fault injection  
@@ -193,7 +195,7 @@ def main():
                     
                     write(p_gdb, b'c\n')
 
-                    ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
+                    ln = read(p_gdb, "^Breakpoint.*()\n$", 1)
                     if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
                         code = -3
                     else:
@@ -208,7 +210,7 @@ def main():
                             code = -2
                         elif(ln_array[-2] == done_func_name.decode()):
                             write(p_gdb, b'c\n')
-                            ln = read(p_gdb, "^Breakpoint.*()\n$", 5)
+                            ln = read(p_gdb, "^Breakpoint.*()\n$", 1)
                             if ln == None: # in this case we have an incorrect execution with the program stuck somewhere
                                 code = -3
                             else:
