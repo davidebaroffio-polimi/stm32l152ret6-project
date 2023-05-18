@@ -94,7 +94,7 @@ __attribute__((annotate("include"))) int main(void)
 #if SCOPE == 1 // microbenchmarks
   BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 700, NULL, tskIDLE_PRIORITY + 5, NULL );
   BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 500, NULL, tskIDLE_PRIORITY+7, NULL); 
-  BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 500, NULL, tskIDLE_PRIORITY+6, NULL);
+  BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 700, NULL, tskIDLE_PRIORITY+6, NULL);
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer", 700, NULL, tskIDLE_PRIORITY+8, NULL); 
   BaseType_t xRetQ = xTaskCreate( vTaskTestQueue, "queue", 500, NULL, tskIDLE_PRIORITY + 3, NULL);
   BaseType_t xRetD = xTaskCreate( vTaskDone, "done", 200, NULL, tskIDLE_PRIORITY, NULL);
