@@ -4,7 +4,7 @@ vTaskCode2
 HAL_UART_MspDeInit
 fnTestQueue1
 fnTestQueue2
-getbit
+des
 xTaskDelayUntil
 fnTestQueue3
 vTaskTestQueue
@@ -42,7 +42,8 @@ SVC_Handler
 DebugMon_Handler
 PendSV_Handler
 SysTick_Handler
-des
+xTimerCreateStatic
+getbit
 ks
 cyfun
 des_init
@@ -79,7 +80,6 @@ prvCheckForValidListAndQueue
 vApplicationGetTimerTaskMemory
 xTimerCreate
 prvInitialiseNewTimer
-xTimerCreateStatic
 xTimerGetTimerDaemonTaskHandle
 xTimerGetPeriod
 vTimerSetReloadMode
@@ -97,7 +97,6 @@ vApplicationGetIdleTaskMemory
 xTaskCreateStatic
 xTaskCreate
 vTaskDelete
-xEventGroupWaitBits
 vTaskDelay
 eTaskGetState
 uxTaskPriorityGet
@@ -142,6 +141,13 @@ ulTaskGenericNotifyTake
 xTaskGenericNotifyWait
 xTaskGenericNotify
 xTaskGenericNotifyFromISR
+_fork_ret
+_execve_ret
+xTimerGenericCommand_ret
+prvSampleTimeNow_ret
+prvInsertTimerInActiveList_ret
+prvGetNextExpireTime_ret
+xTimerCreateTimerTask_ret
 vTaskGenericNotifyGiveFromISR
 xTaskGenericNotifyStateClear
 ulTaskGenericNotifyValueClear
@@ -165,7 +171,7 @@ xEventGroupCreateStatic
 xEventGroupCreate
 xEventGroupSync
 xEventGroupSetBits
-xTaskGenericNotifyStateClear_ret
+xEventGroupWaitBits
 prvTestWaitCondition
 xEventGroupClearBits
 xEventGroupClearBitsFromISR
@@ -269,13 +275,6 @@ _unlink_ret
 _times_ret
 _stat_ret
 _link_ret
-_fork_ret
-_execve_ret
-xTimerGenericCommand_ret
-prvSampleTimeNow_ret
-prvInsertTimerInActiveList_ret
-prvGetNextExpireTime_ret
-xTimerCreateTimerTask_ret
 xTimerCreate_ret
 xTimerCreateStatic_ret
 xTimerGetTimerDaemonTaskHandle_ret
@@ -317,6 +316,7 @@ ulTaskGenericNotifyTake_ret
 xTaskGenericNotifyWait_ret
 xTaskGenericNotify_ret
 xTaskGenericNotifyFromISR_ret
+xTaskGenericNotifyStateClear_ret
 ulTaskGenericNotifyValueClear_ret
 prvTaskIsTaskSuspended_ret
 prvListTasksWithinSingleList_ret
@@ -388,6 +388,7 @@ ucQueueGetQueueType_ret
 xQueueIsQueueEmptyFromISR_ret
 xQueueIsQueueFullFromISR_ret
 pcQueueGetName_ret
+uxQueueMessagesWaitingFromISR_ret_dup
 HAL_UART_MspDeInit_dup
 fnTestQueue1_dup
 fnTestQueue2_dup
@@ -763,7 +764,6 @@ xQueueReceiveFromISR_ret_dup
 xQueuePeekFromISR_ret_dup
 uxQueueMessagesWaiting_ret_dup
 uxQueueSpacesAvailable_ret_dup
-uxQueueMessagesWaitingFromISR_ret_dup
 uxQueueGetQueueNumber_ret_dup
 ucQueueGetQueueType_ret_dup
 xQueueIsQueueEmptyFromISR_ret_dup
