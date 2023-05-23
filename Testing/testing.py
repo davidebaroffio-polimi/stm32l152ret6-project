@@ -26,10 +26,10 @@ cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.exter
 
 cmd_gdb = "gdb-multiarch"
 
-#done_func_name = b"done_ret_dup"
-done_func_name = b"done"
-#sdc_name = b"Incorrect_Result_dup"
-sdc_name = b"Incorrect_Result"
+done_func_name = b"done_ret_dup"
+#done_func_name = b"done"
+sdc_name = b"Incorrect_Result_dup"
+#sdc_name = b"Incorrect_Result"
 eddi_name = b"DataCorruption_Handler"
 cfcss_name = b"SigMismatch_Handler"
 hard_name = b"HardFault_Handler"
