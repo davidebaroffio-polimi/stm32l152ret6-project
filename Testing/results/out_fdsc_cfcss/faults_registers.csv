@@ -1,10 +1,4 @@
 attempt,stop_addr,stop_fn,delay,target,bitflip,code,seed
-0,0x08010ed8,prvCheckTasksWaitingTermination_dup,0.25,r9,1,0,123456
-1,0x080045d2,vTaskDelay_dup,0.21200000000000002,r0,2,2,123456
-2,0x08010ede,prvCheckTasksWaitingTermination_dup,0.20500000000000002,r8,1,0,123456
-3,0x08003578,prvIdleTask,0.21000000000000002,r7,128,0,123456
-4,0x0800b5b2,xTimerGenericCommand_ret_dup,0.21500000000000002,r0,4,0,123456
-5,0x08003534,prvIdleTask,0.229,r11,1,0,123456
 0,0x08010ec0,prvCheckTasksWaitingTermination_dup,0.25,r9,1,0,123456
 1,0x0800352e,prvIdleTask,0.21200000000000002,r0,2,0,123456
 2,0x0800356c,prvIdleTask,0.20500000000000002,r8,1,0,123456

@@ -1,5 +1,4 @@
 attempt,stop_addr,stop_fn,delay,target,bitflip,code,seed
-0,0x08004ac6,xTaskResumeAll_ret_dup,0.25,0x20002513,1,0,123456
 0,0x08010efc,prvCheckTasksWaitingTermination_dup,0.25,0x20002513,1,0,123456
 1,0x08010eea,prvCheckTasksWaitingTermination_dup,0.21200000000000002,0x20000049,2,0,123456
 2,0x08010efc,prvCheckTasksWaitingTermination_dup,0.20500000000000002,0x2000225e,1,0,123456
