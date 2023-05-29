@@ -35,8 +35,11 @@ cfcss_name = b"SigMismatch_Handler"
 hard_name = b"HardFault_Handler"
 
 num_attempts = 10000
+cur_effective_faults = 27476
+num_effective_faults = 3000 - (30000 - cur_effective_faults) # we want to reach 3000, so we subtract the total number of 0 faults to 30k
 
-seed = 123456
+
+seed = 0xdeadbeef
 data = []
 scope = None
 fieldnames = ['attempt', 'stop_addr', 'stop_fn', 'delay', 'target', 'bitflip', 'code', 'seed']
@@ -109,8 +112,11 @@ def read(process, pattern, timeout = 2.0, debug=False):
 def main():
     faults = 0
     attempt = 0
-    for attempt in range(0, num_attempts):
-    #while True:
+    #for attempt in range(0, num_attempts):
+    while True:
+        if faults*2 >= num_effective_faults and data[-1]['code'] == 0:
+            break
+
         pid = os.fork()
         if pid == 0:
             # Initialize stlink
@@ -138,7 +144,8 @@ def main():
                 print("Connected... ", end="")
                 
                 # Add some delay (<500ms)
-                delay = 0.2 + (random.randint(attempt, attempt+50) % 3000)/1000
+                #delay = 0.2 + (random.randint(attempt, attempt+50) % 3000)/1000
+                delay = random.randint(0,1000) / 1000
                 time.sleep(delay)
 
                 # Interrupt the execution for the fault injection  
@@ -241,6 +248,7 @@ def main():
                                 'bitflip': bitflip, 
                                 'code': code,
                                 'seed': seed })
+                    
             else:
                 p_gdb.kill()
             attempt += 1
