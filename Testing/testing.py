@@ -35,7 +35,7 @@ cfcss_name = b"SigMismatch_Handler"
 hard_name = b"HardFault_Handler"
 
 num_attempts = 10000
-cur_effective_faults = 27808
+cur_effective_faults = 27749
 num_effective_faults = 3000 - (30000 - cur_effective_faults) # we want to reach 3000, so we subtract the total number of 0 faults to 30k
 
 
