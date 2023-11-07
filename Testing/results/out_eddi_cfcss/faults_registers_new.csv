@@ -1645,5 +1645,4 @@ attempt,stop_addr,stop_fn,delay,target,bitflip,code,seed
 1643,0x08017490,prvCheckTasksWaitingTermination_dup,0.443,r8,128,0,3735928559
 1644,0x08001d80,vPortExitCritical,0.837,r9,4,0,3735928559
 1645,0x080175ee,prvCheckTasksWaitingTermination_dup,0.534,r13,128,2,3735928559
-1646,0x08003d80,vTaskSwitchContext,0.852,r1,8,-1,3735928559
 1647,0x080174b8,prvCheckTasksWaitingTermination_dup,0.934,r15,1,0,3735928559

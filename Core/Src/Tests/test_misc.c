@@ -116,15 +116,15 @@ void vTaskTimerTest ( void * pvParameters ) {
 
         if (period != 100) {
             if (periodChanged == pdPASS) {
-            for (int i = 0; i<100; i++) {
-                if (xTimerGetPeriod(xTimer) == 200) {
-                    continue;
+                for (int i = 0; i<100; i++) {
+                    if (xTimerGetPeriod(xTimer) == 200) {
+                        continue;
+                    }
+                    vTaskDelay(5);
                 }
-                vTaskDelay(5);
             }
-        }
-        else {
-            Incorrect_Result();
+            else {
+                Incorrect_Result();
             }
         }
 

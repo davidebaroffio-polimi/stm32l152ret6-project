@@ -27,7 +27,6 @@ attempt,stop_addr,stop_fn,delay,target,bitflip,code,seed
 25,0x08001cc4,vPortEnterCritical,0.182,r13,16,0,3735928559
 26,0x0803633c,prvCheckTasksWaitingTermination_dup,0.667,r5,2,0,3735928559
 27,memset,"<ucHeap+5272>,",0.054,r11,32,0,3735928559
-28,0x080058c2,vTaskSwitchContext,0.153,r7,128,-1,3735928559
 29,0x0803af38,vTaskPlaceOnEventListRestricted_dup,0.111,r13,64,0,3735928559
 30,0x080098e0,prvAddCurrentTaskToDelayedList_dup,0.866,r14,128,0,3735928559
 31,0x08001df8,SysTick_Handler,0.913,r15,8,-3,3735928559

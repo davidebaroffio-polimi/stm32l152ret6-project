@@ -114,7 +114,6 @@ attempt,stop_addr,stop_fn,delay,target,bitflip,code,seed
 112,0x080022fe,memcpy_to_duplicate,0.663,0x200006f6,128,0,3735928559
 113,0x08009914,prvAddCurrentTaskToDelayedList_dup,0.766,0x20003a63,1,0,3735928559
 114,0x0801a18e,xTaskGetSchedulerState_ret_dup,0.864,0x2000231e,32,0,3735928559
-115,memset,"<xStack>,",0.354,0x2000050b,128,-1,3735928559
 116,0x0801a19c,xTaskGetSchedulerState_ret_dup,0.725,0x2000608a,2,0,3735928559
 117,0x08004488,xTaskIncrementTick,0.942,0x20006409,2,0,3735928559
 118,0x08005bfe,vBackupRestoreCallVoidFunction,0.038,0x2000219c,128,0,3735928559

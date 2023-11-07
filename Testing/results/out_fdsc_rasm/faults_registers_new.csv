@@ -2443,7 +2443,6 @@ attempt,stop_addr,stop_fn,delay,target,bitflip,code,seed
 2441,0x080029aa,xTaskResumeAll,0.714,r6,32,0,3735928559
 2442,0x08003898,prvIdleTask,0.957,r7,4,0,3735928559
 2443,0x08004f2c,prvAddCurrentTaskToDelayedList_dup,0.429,r2,2,0,3735928559
-2444,0x0800b8f4,xQueueReceive_ret_dup,0.714,r13,4,-1,3735928559
 2445,0x08013c70,prvCheckTasksWaitingTermination_dup,0.451,r11,4,0,3735928559
 2446,memcpy,"<Timer_Stack+1840>,",0.799,r4,16,0,3735928559
 2447,0x0800b96a,xQueueReceive_ret_dup,0.886,r6,64,0,3735928559

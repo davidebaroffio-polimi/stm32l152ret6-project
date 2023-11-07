@@ -39,8 +39,9 @@
  * - 1: Microbenchmarks
  * - 2: DES performance benchmark
  * - 3: MatMult performance benchmark
+ * - 4: Lift performance benchmark
 */
-#define SCOPE 1
+#define SCOPE 4
 
 /* USER CODE END PTD */
 
@@ -71,6 +72,7 @@ void vTaskCode1( void * pvParameters );
 void vTaskCode2( void * pvParameters );
 void vTaskDES( void * pvParameters );
 void vTaskMM(void * pvParameters);
+void vTaskLift(void * pvParameters);
 void vTaskDone(void * pvParameters);
 /* USER CODE END PFP */
 
@@ -101,11 +103,14 @@ __attribute__((annotate("include"))) int main(void)
   if (xRetQ & xRet5 & xRet6 & xRet7 & xRet8 & xRetD == pdPASS)
 
 #elif SCOPE == 2 // DES benchmark
-  BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 1200, NULL, tskIDLE_PRIORITY + 8, NULL);
+  BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);
   if (xRet == pdPASS)
 
 #elif SCOPE == 3 // MatMult benchmark
   BaseType_t xRet = xTaskCreate(vTaskMM, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);
+  if (xRet == pdPASS)
+#elif SCOPE == 4 // Lift benchmark
+  BaseType_t xRet = xTaskCreate(vTaskLift, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);
   if (xRet == pdPASS)
 #endif
     xCanStartScheduler = 1;
@@ -354,7 +359,7 @@ __attribute__((annotate("include"))) void vTaskDES( void * pvParameters )
     for( ;; )
     {
       int start = xTaskGetTickCount();
-      for (int i=0; i<1000; i++) {
+      for (int i=0; i<4000; i++) {
         des_init();
       }
       int end = xTaskGetTickCount();
@@ -370,8 +375,22 @@ __attribute__((annotate("include"))) void vTaskMM( void * pvParameters )
     for( ;; )
     {
       int start = xTaskGetTickCount();
-      for (int i=0; i<250; i++) {
+      for (int i=0; i<1000; i++) {
         mm_init();
+      }
+      int end = xTaskGetTickCount();
+      benchmark_res(end-start);
+    }
+}
+
+void vTaskLift(void * pvParameters) {
+  vTaskDelay(100);
+    
+    for( ;; )
+    {
+      int start = xTaskGetTickCount();
+      for (int i=0; i<1000; i++) {
+        liftTask_init();
       }
       int end = xTaskGetTickCount();
       benchmark_res(end-start);

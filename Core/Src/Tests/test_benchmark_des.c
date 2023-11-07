@@ -12,6 +12,7 @@
 #include "main.h"
 #include "test.h"
 #include "task.h"
+#include "mem_utils.h"
 
 /* All output disabled for wcsim */
 
@@ -31,11 +32,11 @@ typedef struct GREAT { unsigned long l, c, r; } great;
 unsigned long bit[33];
 
 static immense icd;
-static char ipc1[57]={0,57,49,41,33,25,17,9,1,58,50,
+const static char ipc1[57]={0,57,49,41,33,25,17,9,1,58,50,
    42,34,26,18,10,2,59,51,43,35,27,19,11,3,60,
    52,44,36,63,55,47,39,31,23,15,7,62,54,46,38,
    30,22,14,6,61,53,45,37,29,21,13,5,28,20,12,4};
-static char ipc2[49]={0,14,17,11,24,1,5,3,28,15,6,21,
+const static char ipc2[49]={0,14,17,11,24,1,5,3,28,15,6,21,
    10,23,19,12,4,26,8,16,7,27,20,13,2,41,52,31,
    37,47,55,30,40,51,45,33,48,44,49,39,56,34,
    53,46,42,50,36,29,32};
@@ -116,7 +117,7 @@ void des(immense inp, immense key, int * newkey, int isw, immense * out) {
       initflag=0;
       bit[1]=shifter=1L;
       for(j=2;j<=32;j++) bit[j] = (shifter <<= 1);
-      }
+   }
    if (*newkey) {
       *newkey=0;
       icd.r=icd.l=0L;
@@ -125,8 +126,16 @@ void des(immense inp, immense key, int * newkey, int isw, immense * out) {
          icd.l = (icd.l <<= 1) | getbit(key,ipc1[k],32);
          }
 
-      for(i=1;i<=16;i++) {pg = kns[i]; ks(/* key,*/ i, &pg); kns[i] = pg;}
+      for(i=1;i<=16;i++) {
+         pg.l = kns[i].l; 
+         pg.c = kns[i].c; 
+         pg.r = kns[i].r; 
+         ks(/* key,*/ i, &pg); 
+         kns[i].l = pg.l;
+         kns[i].c = pg.c;
+         kns[i].r = pg.r;
       }
+   }
    itmp.r=itmp.l=0L;
    for (j=32,k=64;j>=1;j--,k--) {
       itmp.r = (itmp.r <<= 1) | getbit(inp,ip[j],32);

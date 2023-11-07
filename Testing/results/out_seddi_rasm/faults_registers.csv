@@ -9890,7 +9890,6 @@ attempt,stop_addr,stop_fn,delay,target,bitflip,code,seed
 9888,0x08003fb8,prvIdleTask,1.115,r5,1,0,123456
 9889,0x08002de8,xTaskResumeAll,1.091,r7,64,-3,123456
 9890,0x08019f0a,prvCheckTasksWaitingTermination_dup,1.11,r1,16,0,123456
-9891,0x08019f20,prvCheckTasksWaitingTermination_dup,1.095,r13,16,-1,123456
 9892,0x0800402a,prvIdleTask,1.1340000000000001,r1,2,0,123456
 9893,0x08004004,prvIdleTask,1.099,r3,64,2,123456
 9894,0x08004034,prvIdleTask,1.1,r3,64,0,123456
