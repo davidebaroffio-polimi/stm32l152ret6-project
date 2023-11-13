@@ -41,8 +41,9 @@
  * - 3: MatMult performance benchmark
  * - 4: Lift performance benchmark
 */
-#define SCOPE 4
-
+#ifndef SCOPE
+  #define SCOPE 1
+#endif
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -73,6 +74,8 @@ void vTaskCode2( void * pvParameters );
 void vTaskDES( void * pvParameters );
 void vTaskMM(void * pvParameters);
 void vTaskLift(void * pvParameters);
+void vTaskCRC(void * pvParameters);
+void vTaskSHA(void * pvParameters);
 void vTaskDone(void * pvParameters);
 /* USER CODE END PFP */
 
@@ -111,6 +114,12 @@ __attribute__((annotate("include"))) int main(void)
   if (xRet == pdPASS)
 #elif SCOPE == 4 // Lift benchmark
   BaseType_t xRet = xTaskCreate(vTaskLift, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);
+  if (xRet == pdPASS)
+#elif SCOPE == 5
+  BaseType_t xRet = xTaskCreate(vTaskCRC, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);
+  if (xRet == pdPASS)
+#elif SCOPE == 6
+  BaseType_t xRet = xTaskCreate(vTaskSHA, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);
   if (xRet == pdPASS)
 #endif
     xCanStartScheduler = 1;
@@ -395,6 +404,34 @@ void vTaskLift(void * pvParameters) {
       int end = xTaskGetTickCount();
       benchmark_res(end-start);
     }
+}
+
+void vTaskCRC(void * pvParameters) {
+  vTaskDelay(100);
+    
+  for( ;; )
+  {
+    int start = xTaskGetTickCount();
+    for (int i=0; i<1000; i++) {
+      do_crc();
+    }
+    int end = xTaskGetTickCount();
+    benchmark_res(end-start);
+  }
+}
+
+void vTaskSHA(void * pvParameters) {
+  vTaskDelay(100);
+    
+  for( ;; )
+  {
+    int start = xTaskGetTickCount();
+    for (int i=0; i<250; i++) {
+      do_sha();
+    }
+    int end = xTaskGetTickCount();
+    benchmark_res(end-start);
+  }
 }
 
 // periodically call done() to assure gdb that everything is going fine
