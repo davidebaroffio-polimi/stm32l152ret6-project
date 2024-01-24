@@ -128,7 +128,7 @@ void vTaskTimerTest ( void * pvParameters ) {
             }
         }
 
-        isDeleted = xTimerDelete(xTimer, 1000);
+        isDeleted = xTimerDelete(xTimer, 10000);
         if (isDeleted == pdFAIL) {
             Incorrect_Result();
         }

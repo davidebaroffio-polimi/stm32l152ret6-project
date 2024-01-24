@@ -22,6 +22,7 @@
 #include "task.h"
 #include "timers.h"
 #include "croutine.h"
+#include "test.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "test_queue.h"
@@ -103,7 +104,11 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer", 700, NULL, tskIDLE_PRIORITY+8, NULL); 
   BaseType_t xRetQ = xTaskCreate( vTaskTestQueue, "queue", 500, NULL, tskIDLE_PRIORITY + 3, NULL);
   BaseType_t xRetD = xTaskCreate( vTaskDone, "done", 200, NULL, tskIDLE_PRIORITY+10, NULL);
-  if (xRetQ & xRet5 & xRet6 & xRet7 & xRet8 & xRetD == pdPASS)
+
+  BaseType_t xRetMM = xTaskCreate(vTaskMM, "MM", 1000, NULL, tskIDLE_PRIORITY + 8, NULL);
+  BaseType_t xRetCRC = xTaskCreate(vTaskCRC, "CRC", 1000, NULL, tskIDLE_PRIORITY + 8, NULL);
+
+  if (xRetQ & xRet5 & xRet6 & xRet7 & xRet8 & xRetD & xRetMM & xRetCRC == pdPASS)
 
 #elif SCOPE == 2 // DES benchmark
   BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);
@@ -383,10 +388,11 @@ __attribute__((annotate("include"))) void vTaskMM( void * pvParameters )
     
     for( ;; )
     {
+      vTaskDelay(100);
       int start = xTaskGetTickCount();
-      for (int i=0; i<1000; i++) {
+      //for (int i=0; i<1000; i++) {
         mm_init();
-      }
+      //}
       int end = xTaskGetTickCount();
       benchmark_res(end-start);
     }
@@ -411,10 +417,11 @@ void vTaskCRC(void * pvParameters) {
     
   for( ;; )
   {
+    vTaskDelay(100);
     int start = xTaskGetTickCount();
-    for (int i=0; i<1000; i++) {
+    //for (int i=0; i<1000; i++) {
       do_crc();
-    }
+    //}
     int end = xTaskGetTickCount();
     benchmark_res(end-start);
   }

@@ -3115,8 +3115,8 @@ void vTaskInternalSetTimeOutState( TimeOut_t * const pxTimeOut ) PRIVILEGED_FUNC
     /* Restore the runtime signature and the adjusting runtime signature from the current task TCB*/
     void vRestoreSig(void);
 
-    void vBackupRestoreCallVoidFunction(void (*funcToCall)());
-    int xBackupRestoreCallVoidFunction(int (*funcToCall)());
+    void vBackupRestoreCallVoidFunction(void (funcToCall)(void));
+    BaseType_t xBackupRestoreCallVoidFunction(BaseType_t (funcToCall)(void));
 #endif
 
 /* *INDENT-OFF* */

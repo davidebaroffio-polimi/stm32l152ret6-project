@@ -19,10 +19,10 @@ class SignalHandler(object):
         self.expired = True
 
 # works on lab workstation...
-cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
+#cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
 
 # works on my pc
-#cmd_stlink = "/opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
+cmd_stlink = "/opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
 
 cmd_gdb = "gdb-multiarch"
 
@@ -34,10 +34,7 @@ eddi_name = b"DataCorruption_Handler"
 cfcss_name = b"SigMismatch_Handler"
 hard_name = b"HardFault_Handler"
 
-num_attempts = 10000
-cur_effective_faults = 27022
-num_effective_faults = 3000 - (30000 - cur_effective_faults) # we want to reach 3000, so we subtract the total number of 0 faults to 30k
-
+num_effective_faults = 17000
 
 seed = 0xdeadbeef
 data = []
@@ -143,8 +140,7 @@ def main():
             if read(p_gdb, '^.*Continuing.') != None:
                 print("Connected... ", end="")
                 
-                # Add some delay (<500ms)
-                #delay = 0.2 + (random.randint(attempt, attempt+50) % 3000)/1000
+                # Add some delay (<1000ms)
                 delay = random.randint(0,1000) / 1000
                 time.sleep(delay)
 
@@ -166,7 +162,7 @@ def main():
 
                     # Select what to alter  
                     what_to_alter = None
-                    if scope == "registers": # alter a register
+                    if random.randint(0, 81920 + 64) < 15: # alter a register
                         register = random.randint(0, 15)
                         what_to_alter = b'$r' + str.encode(str(register))
                     else: # alter some memory area (80KB of memory, but writable_size is allocated)
@@ -189,8 +185,7 @@ def main():
                     write(p_gdb, b'b *' + done_func_name + b'\n')
 
                     print(what_to_alter, "=", what_to_alter, "^", bitflip, "after", delay, "seconds")
-
-                    ### TODO change the `+` into `^`
+                    
                     if what_to_alter in [b'$r13', b'$r14', b'$r15']:
                         write(p_gdb, b'print (int)' + what_to_alter + b'\n')
                         ln = read(p_gdb, "^.*\$.* = .*\n$")

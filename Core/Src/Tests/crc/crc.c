@@ -172,8 +172,8 @@ DWORD crc32buf(char *buf, size_t len)
       
 }
 
-BYTE data_crc[8192] = RANDOM_STRING;
+BYTE data_crc[4096] = RANDOM_STRING;
 
 void do_crc() {
-      crc32buf(data_crc, 8192);
+      crc32buf(data_crc, 4096);
 }

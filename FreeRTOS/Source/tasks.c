@@ -5498,7 +5498,7 @@ __attribute__((annotate("exclude"))) void vRestoreSig(void) {
  * Function that backs up both runtime signatures, calls the function funcToCall
  * and then restores the previous values
 */
-__attribute__((annotate("exclude"))) void vBackupRestoreCallVoidFunction(void (*funcToCall)()) {
+__attribute__((annotate("exclude"))) void vBackupRestoreCallVoidFunction(void (funcToCall)(void)) {
     #ifdef configINTRA_FUNCTION_CFC
     int32_t iRuntmSig_bak = iRuntmSig;
     int32_t iAdjstSig_bak = iAdjstSig;
@@ -5512,7 +5512,7 @@ __attribute__((annotate("exclude"))) void vBackupRestoreCallVoidFunction(void (*
     #endif
 }
 
-__attribute__((annotate("exclude"))) int xBackupRestoreCallVoidFunction(int (*funcToCall)()) {
+__attribute__((annotate("exclude"))) BaseType_t xBackupRestoreCallVoidFunction(BaseType_t (funcToCall)(void)) {
     #ifdef configINTRA_FUNCTION_CFC
     int32_t iRuntmSig_bak = iRuntmSig;
     int32_t iAdjstSig_bak = iAdjstSig;

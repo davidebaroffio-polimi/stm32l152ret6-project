@@ -33,7 +33,7 @@
  * arrays and simple arithmetic.
  */
 
-#define UPPERLIMIT 20
+#define UPPERLIMIT 10
 
 typedef int matrix [UPPERLIMIT][UPPERLIMIT];
 

@@ -343,7 +343,7 @@ BaseType_t xPortStartScheduler( void )
     uxCriticalNesting = 0;
 
     /* Start the first task. */
-    vBackupRestoreCallVoidFunction(prvPortStartFirstTask);
+    vBackupRestoreCallVoidFunction(&prvPortStartFirstTask);
 
     /* Should never get here as the tasks will now be executing!  Call the task
      * exit error function to prevent compiler warnings about a static function
@@ -455,7 +455,7 @@ void xPortSysTickHandler( void )
     portDISABLE_INTERRUPTS();
     {
         /* Increment the RTOS tick. */
-        if( xBackupRestoreCallVoidFunction(xTaskIncrementTick) != pdFALSE )
+        if( xBackupRestoreCallVoidFunction(&xTaskIncrementTick) != pdFALSE )
         {
             /* A context switch is required.  Context switching is performed in
              * the PendSV interrupt.  Pend the PendSV interrupt. */

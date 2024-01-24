@@ -18,6 +18,8 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+#include "FreeRTOS.h"
+#include "task.h"
 #include "main.h"
 #include "stm32l1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
@@ -213,7 +215,7 @@ void SysTick_Handler(void)
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
   /* USER CODE END SysTick_IRQn 0 */
-  vBackupRestoreCallVoidFunction(HAL_IncTick);
+  vBackupRestoreCallVoidFunction(&HAL_IncTick);
   /* USER CODE BEGIN SysTick_IRQn 1 */
 
   /* USER CODE END SysTick_IRQn 1 */
