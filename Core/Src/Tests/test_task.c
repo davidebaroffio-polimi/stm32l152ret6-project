@@ -48,7 +48,8 @@ xTaskCheckForTimeOut                [x] // used by queue.c
 #include "test.h"
 #include "task.h"
 
-__attribute__((annotate("exclude"))) StackType_t xStack[ configMINIMAL_STACK_SIZE ];
+__attribute__((annotate("exclude"))) StackType_t xDummyStack[ configMINIMAL_STACK_SIZE ];
+StaticTask_t xDummyTCB;
 
 void vTaskUseless( void * pvParameters ) {
     
@@ -59,7 +60,6 @@ void vTaskUseless( void * pvParameters ) {
 
 void fnTaskTest() {
     
-    StaticTask_t xTaskBuffer;
 
     int numTasks = uxTaskGetNumberOfTasks();
 
@@ -69,8 +69,8 @@ void fnTaskTest() {
                                              configMINIMAL_STACK_SIZE,               // stack size
                                              NULL,              // params
                                              tskIDLE_PRIORITY,  // priority
-                                             xStack,            // task stack array
-                                             &xTaskBuffer);     // task data structure
+                                             xDummyStack,            // task stack array
+                                             &xDummyTCB);     // task data structure
     // set priority
     vTaskPrioritySet(xHandle, tskIDLE_PRIORITY+1);
     // suspend

@@ -98,7 +98,34 @@ __attribute__((annotate("include"))) int main(void)
   //      V V V
   int xCanStartScheduler = 0;
 #if SCOPE == 1 // microbenchmarks
-  BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 700, NULL, tskIDLE_PRIORITY + 5, NULL );
+  
+  static __attribute__((annotate("exclude"))) StackType_t xTaskStack[ 700 ];
+  static StaticTask_t xTaskTCB;
+  static __attribute__((annotate("exclude"))) StackType_t xBufferRecvStack[ 500 ];
+  static StaticTask_t xBufferRecvTCB;
+  static __attribute__((annotate("exclude"))) StackType_t xBufferSendStack[ 700 ];
+  static StaticTask_t xBufferSendTCB;
+  static __attribute__((annotate("exclude"))) StackType_t xTimerStack[ 700 ];
+  static StaticTask_t xTimerTCB;
+  static __attribute__((annotate("exclude"))) StackType_t xQueueStack[ 500 ];
+  static StaticTask_t xQueueTCB;
+  static __attribute__((annotate("exclude"))) StackType_t xMMStack[ 1000 ];
+  static StaticTask_t xMMTCB;
+  static __attribute__((annotate("exclude"))) StackType_t xCRCStack[ 1000 ];
+  static StaticTask_t xCRCTCB;
+
+  BaseType_t xRetD = xTaskCreate( vTaskDone, "done", 300, NULL, tskIDLE_PRIORITY+10, NULL);
+
+  TaskHandle_t xRet5 = xTaskCreateStatic( vTaskTaskTest, "task", 700, NULL, tskIDLE_PRIORITY + 5, xTaskStack, &xTaskTCB);
+  TaskHandle_t xRet6 = xTaskCreateStatic( vTaskBufferTestReceive, "buf1", 500, NULL, tskIDLE_PRIORITY+7, xBufferRecvStack, &xBufferRecvTCB); 
+  TaskHandle_t xRet7 = xTaskCreateStatic( vTaskBufferTestSend, "buf2", 700, NULL, tskIDLE_PRIORITY+6, xBufferSendStack, &xBufferSendTCB);
+  TaskHandle_t xRet8 = xTaskCreateStatic( vTaskTimerTest, "timer", 700, NULL, tskIDLE_PRIORITY+8, xTimerStack, &xTimerTCB); 
+  TaskHandle_t xRetQ = xTaskCreateStatic( vTaskTestQueue, "queue", 500, NULL, tskIDLE_PRIORITY + 3, xQueueStack, &xQueueTCB);
+
+  TaskHandle_t xRetMM = xTaskCreateStatic(vTaskMM, "MM", 1000, NULL, tskIDLE_PRIORITY + 1, xMMStack, &xMMTCB);
+  TaskHandle_t xRetCRC = xTaskCreateStatic(vTaskCRC, "CRC", 1000, NULL, tskIDLE_PRIORITY + 2, xCRCStack, &xCRCTCB);
+
+  /* BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 700, NULL, tskIDLE_PRIORITY + 5, NULL );
   BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 500, NULL, tskIDLE_PRIORITY+7, NULL); 
   BaseType_t xRet7 = xTaskCreate( vTaskBufferTestSend, "buf2", 700, NULL, tskIDLE_PRIORITY+6, NULL);
   BaseType_t xRet8 = xTaskCreate( vTaskTimerTest, "timer", 700, NULL, tskIDLE_PRIORITY+8, NULL); 
@@ -106,9 +133,9 @@ __attribute__((annotate("include"))) int main(void)
   BaseType_t xRetD = xTaskCreate( vTaskDone, "done", 200, NULL, tskIDLE_PRIORITY+10, NULL);
 
   BaseType_t xRetMM = xTaskCreate(vTaskMM, "MM", 1000, NULL, tskIDLE_PRIORITY + 8, NULL);
-  BaseType_t xRetCRC = xTaskCreate(vTaskCRC, "CRC", 1000, NULL, tskIDLE_PRIORITY + 8, NULL);
+  BaseType_t xRetCRC = xTaskCreate(vTaskCRC, "CRC", 1000, NULL, tskIDLE_PRIORITY + 8, NULL); */
 
-  if (xRetQ & xRet5 & xRet6 & xRet7 & xRet8 & xRetD & xRetMM & xRetCRC == pdPASS)
+  if (xRetQ && xRet5 && xRet6 && xRet7 && xRet8 && xRetD && xRetMM && xRetCRC)
 
 #elif SCOPE == 2 // DES benchmark
   BaseType_t xRet = xTaskCreate(vTaskDES, "benchmark", 3000, NULL, tskIDLE_PRIORITY + 8, NULL);

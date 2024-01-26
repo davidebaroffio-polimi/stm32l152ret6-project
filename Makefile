@@ -10,6 +10,7 @@ out_all:
 	@for data_p in eddi fdsc seddi ; do \
 		for cfg_p in rasm inter-rasm cfcss ; do \
 			$(ASPIS) -DSCOPE=$${SCOPE} --config $(CONF) --llvm-bin $(LLVM_BIN) --exclude $(EXCLUDE_F) --asmfiles asmfiles.txt --$${cfg_p} --$${data_p} -o out_$${data_p}_$${cfg_p}_$${SCOPE}.elf `find Core/Src -type f -iname *.c` `ls FreeRTOS/Source/*.c`; \
+			exit;\
 		done; \
 	done;
 	#done

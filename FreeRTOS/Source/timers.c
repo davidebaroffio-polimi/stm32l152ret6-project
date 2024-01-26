@@ -940,6 +940,12 @@
     }
 /*-----------------------------------------------------------*/
 
+/* The timer queue is allocated statically in case
+    * configSUPPORT_DYNAMIC_ALLOCATION is 0. */
+PRIVILEGED_DATA static StaticQueue_t xStaticTimerQueue;                                                                          /*lint !e956 Ok to declare in this manner to prevent additional conditional compilation guards in other locations. */
+PRIVILEGED_DATA static uint8_t ucStaticTimerQueueStorage[ ( size_t ) configTIMER_QUEUE_LENGTH * sizeof( DaemonTaskMessage_t ) ]; /*lint !e956 Ok to declare in this manner to prevent additional conditional compilation guards in other locations. */
+
+
     static void prvCheckForValidListAndQueue( void )
     {
         /* Check that the list from which active timers are referenced, and the
@@ -956,11 +962,7 @@
 
                 #if ( configSUPPORT_STATIC_ALLOCATION == 1 )
                     {
-                        /* The timer queue is allocated statically in case
-                         * configSUPPORT_DYNAMIC_ALLOCATION is 0. */
-                        PRIVILEGED_DATA static StaticQueue_t xStaticTimerQueue;                                                                          /*lint !e956 Ok to declare in this manner to prevent additional conditional compilation guards in other locations. */
-                        PRIVILEGED_DATA static uint8_t ucStaticTimerQueueStorage[ ( size_t ) configTIMER_QUEUE_LENGTH * sizeof( DaemonTaskMessage_t ) ]; /*lint !e956 Ok to declare in this manner to prevent additional conditional compilation guards in other locations. */
-
+                        
                         xTimerQueue = xQueueCreateStatic( ( UBaseType_t ) configTIMER_QUEUE_LENGTH, ( UBaseType_t ) sizeof( DaemonTaskMessage_t ), &( ucStaticTimerQueueStorage[ 0 ] ), &xStaticTimerQueue );
                     }
                 #else
