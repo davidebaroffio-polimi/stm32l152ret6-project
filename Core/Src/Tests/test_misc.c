@@ -18,6 +18,8 @@ x
 
 // BUFFERS
 MessageBufferHandle_t xMessageBuffer = NULL;
+static uint8_t ucMessageBufferStorage[ 8 ];
+StaticMessageBuffer_t xMessageBufferStruct;
 /**
  * Creates a MessageBuffer, performs a
  * blocking write and deletes the buffer
@@ -28,6 +30,7 @@ void vTaskBufferTestSend ( void * pvParameters ) {
     for ( ;; ) {
         // When a message is written to the message buffer an additional sizeof( size_t ) bytes are also written to store the message's length. sizeof( size_t ) is typically 4 bytes on a 32-bit architecture, so on most 32-bit architectures a 10 byte message will take up 14 bytes of message buffer space.
         vTaskDelay(5);
+        //xMessageBuffer = xMessageBufferCreateStatic(sizeof( ucMessageBufferStorage ), ucMessageBufferStorage, &xMessageBufferStruct);
         xMessageBuffer = xMessageBufferCreate(8); // we allow space for an int and the size_t 
         int spaceAvailable = xMessageBufferSpacesAvailable(xMessageBuffer);
         int isEmpty = xMessageBufferIsEmpty(xMessageBuffer); // should be pdTRUE
@@ -73,6 +76,8 @@ void vTimerCallback( TimerHandle_t xTimer ) {
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
 }
 
+StaticTimer_t pxTimerBuffer;
+
 #if configUSE_TIMERS == 1
 void vTaskTimerTest ( void * pvParameters ) {
     int isDeleted = pdPASS;
@@ -83,24 +88,8 @@ void vTaskTimerTest ( void * pvParameters ) {
 
     for ( ;; ) {
         if (isDeleted == pdPASS) {
-            xTimer = xTimerCreate
-                    ( /* Just a text name, not used by the RTOS
-                        kernel. */
-                        "Timer",
-                        /* The timer period in ticks, must be
-                        greater than 0. */
-                        100,
-                        /* The timers will auto-reload themselves
-                        when they expire. */
-                        pdFALSE,
-                        /* The ID is used to store a count of the
-                        number of times the timer has expired, which
-                        is initialised to 0. */
-                        ( void * ) 0,
-                        /* Each timer calls the same callback when
-                        it expires. */
-                        vTimerCallback
-                    );
+            xTimer = xTimerCreateStatic("Timer", 100, pdFALSE, ( void * ) 0, vTimerCallback, &pxTimerBuffer);
+            //xTimer = xTimerCreate ( "Timer", 100, pdFALSE, ( void * ) 0, vTimerCallback );
 
             period = xTimerGetPeriod(xTimer);
         }
