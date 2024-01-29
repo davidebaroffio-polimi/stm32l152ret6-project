@@ -99,31 +99,39 @@ __attribute__((annotate("include"))) int main(void)
   int xCanStartScheduler = 0;
 #if SCOPE == 1 // microbenchmarks
   
-  static __attribute__((annotate("exclude"))) StackType_t xTaskStack[ 1000 ];
+  #define xTaskStack_size 500
+  #define xBufferRecvStack_size 500
+  #define xBufferSendStack_size 600
+  #define xTimerStack_size 600
+  #define xQueueStack_size 500
+  #define xMMStack_size 400
+  #define xCRCStack_size 300
+
+  static __attribute__((annotate("exclude"))) StackType_t xTaskStack[ xTaskStack_size ];
   static StaticTask_t xTaskTCB;
-  static __attribute__((annotate("exclude"))) StackType_t xBufferRecvStack[ 1000 ];
+  static __attribute__((annotate("exclude"))) StackType_t xBufferRecvStack[ xBufferRecvStack_size ];
   static StaticTask_t xBufferRecvTCB;
-  static __attribute__((annotate("exclude"))) StackType_t xBufferSendStack[ 1000 ];
+  static __attribute__((annotate("exclude"))) StackType_t xBufferSendStack[ xBufferSendStack_size ];
   static StaticTask_t xBufferSendTCB;
-  static __attribute__((annotate("exclude"))) StackType_t xTimerStack[ 1000 ];
+  static __attribute__((annotate("exclude"))) StackType_t xTimerStack[ xTimerStack_size ];
   static StaticTask_t xTimerTCB;
-  static __attribute__((annotate("exclude"))) StackType_t xQueueStack[ 1000 ];
+  static __attribute__((annotate("exclude"))) StackType_t xQueueStack[ xQueueStack_size ];
   static StaticTask_t xQueueTCB;
-  static __attribute__((annotate("exclude"))) StackType_t xMMStack[ 1000 ];
+  static __attribute__((annotate("exclude"))) StackType_t xMMStack[ xMMStack_size ];
   static StaticTask_t xMMTCB;
-  static __attribute__((annotate("exclude"))) StackType_t xCRCStack[ 1000 ];
+  static __attribute__((annotate("exclude"))) StackType_t xCRCStack[ xCRCStack_size ];
   static StaticTask_t xCRCTCB;
 
   BaseType_t xRetD = xTaskCreate( vTaskDone, "done", 300, NULL, tskIDLE_PRIORITY+10, NULL);
 
-  TaskHandle_t xRet5 = xTaskCreateStatic( vTaskTaskTest, "task", 1000, NULL, tskIDLE_PRIORITY + 5, xTaskStack, &xTaskTCB);
-  TaskHandle_t xRet6 = xTaskCreateStatic( vTaskBufferTestReceive, "buf1", 1000, NULL, tskIDLE_PRIORITY+7, xBufferRecvStack, &xBufferRecvTCB); 
-  TaskHandle_t xRet7 = xTaskCreateStatic( vTaskBufferTestSend, "buf2", 1000, NULL, tskIDLE_PRIORITY+6, xBufferSendStack, &xBufferSendTCB);
-  TaskHandle_t xRet8 = xTaskCreateStatic( vTaskTimerTest, "timer", 1000, NULL, tskIDLE_PRIORITY+8, xTimerStack, &xTimerTCB); 
-  TaskHandle_t xRetQ = xTaskCreateStatic( vTaskTestQueue, "queue", 1000, NULL, tskIDLE_PRIORITY + 3, xQueueStack, &xQueueTCB);
+  TaskHandle_t xRet5 = xTaskCreateStatic( vTaskTaskTest, "task", xTaskStack_size, NULL, tskIDLE_PRIORITY + 5, xTaskStack, &xTaskTCB);
+  TaskHandle_t xRet6 = xTaskCreateStatic( vTaskBufferTestReceive, "buf1", xBufferRecvStack_size, NULL, tskIDLE_PRIORITY+7, xBufferRecvStack, &xBufferRecvTCB); 
+  TaskHandle_t xRet7 = xTaskCreateStatic( vTaskBufferTestSend, "buf2", xBufferSendStack_size, NULL, tskIDLE_PRIORITY+6, xBufferSendStack, &xBufferSendTCB);
+  TaskHandle_t xRet8 = xTaskCreateStatic( vTaskTimerTest, "timer", xTimerStack_size, NULL, tskIDLE_PRIORITY+8, xTimerStack, &xTimerTCB); 
+  TaskHandle_t xRetQ = xTaskCreateStatic( vTaskTestQueue, "queue", xQueueStack_size, NULL, tskIDLE_PRIORITY + 3, xQueueStack, &xQueueTCB);
 
-  TaskHandle_t xRetMM = xTaskCreateStatic(vTaskMM, "MM", 1000, NULL, tskIDLE_PRIORITY + 1, xMMStack, &xMMTCB);
-  TaskHandle_t xRetCRC = xTaskCreateStatic(vTaskCRC, "CRC", 1000, NULL, tskIDLE_PRIORITY + 2, xCRCStack, &xCRCTCB);
+  TaskHandle_t xRetMM = xTaskCreateStatic(vTaskMM, "MM", xMMStack_size, NULL, tskIDLE_PRIORITY + 1, xMMStack, &xMMTCB);
+  TaskHandle_t xRetCRC = xTaskCreateStatic(vTaskCRC, "CRC", xCRCStack_size, NULL, tskIDLE_PRIORITY + 2, xCRCStack, &xCRCTCB);
 
   /* BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 700, NULL, tskIDLE_PRIORITY + 5, NULL );
   BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 500, NULL, tskIDLE_PRIORITY+7, NULL); 
