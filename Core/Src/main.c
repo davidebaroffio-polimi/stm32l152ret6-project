@@ -105,7 +105,7 @@ __attribute__((annotate("include"))) int main(void)
   #define xTimerStack_size 600
   #define xQueueStack_size 500
   #define xMMStack_size 400
-  #define xCRCStack_size 300
+  #define xCRCStack_size 350
 
   static __attribute__((annotate("exclude"))) StackType_t xTaskStack[ xTaskStack_size ];
   static StaticTask_t xTaskTCB;
@@ -131,7 +131,7 @@ __attribute__((annotate("include"))) int main(void)
   TaskHandle_t xRetQ = xTaskCreateStatic( vTaskTestQueue, "queue", xQueueStack_size, NULL, tskIDLE_PRIORITY + 3, xQueueStack, &xQueueTCB);
 
   TaskHandle_t xRetMM = xTaskCreateStatic(vTaskMM, "MM", xMMStack_size, NULL, tskIDLE_PRIORITY + 1, xMMStack, &xMMTCB);
-  TaskHandle_t xRetCRC = xTaskCreateStatic(vTaskCRC, "CRC", xCRCStack_size, NULL, tskIDLE_PRIORITY + 2, xCRCStack, &xCRCTCB);
+  TaskHandle_t xRetCRC = xTaskCreateStatic(vTaskCRC, "CRC", xCRCStack_size, NULL, tskIDLE_PRIORITY + 1, xCRCStack, &xCRCTCB);
 
   /* BaseType_t xRet5 = xTaskCreate( vTaskTaskTest, "task", 700, NULL, tskIDLE_PRIORITY + 5, NULL );
   BaseType_t xRet6 = xTaskCreate( vTaskBufferTestReceive, "buf1", 500, NULL, tskIDLE_PRIORITY+7, NULL); 
@@ -419,11 +419,10 @@ __attribute__((annotate("include"))) void vTaskDES( void * pvParameters )
 /* Task to be created. */
 __attribute__((annotate("include"))) void vTaskMM( void * pvParameters )
 {
-    vTaskDelay(100);
     
     for( ;; )
     {
-      vTaskDelay(100);
+      vTaskDelay(10);
       int start = xTaskGetTickCount();
       //for (int i=0; i<1000; i++) {
         mm_init();
@@ -448,11 +447,10 @@ void vTaskLift(void * pvParameters) {
 }
 
 void vTaskCRC(void * pvParameters) {
-  vTaskDelay(100);
     
   for( ;; )
   {
-    vTaskDelay(100);
+    vTaskDelay(15);
     int start = xTaskGetTickCount();
     //for (int i=0; i<1000; i++) {
       do_crc();
@@ -479,7 +477,7 @@ void vTaskSHA(void * pvParameters) {
 // periodically call done() to assure gdb that everything is going fine
 void vTaskDone(void * pvParameters) {
   for ( ;; ) {
-    vTaskDelay(200);
+    vTaskDelay(100);
     done();
   }
 }

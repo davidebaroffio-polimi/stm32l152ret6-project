@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include "crc.h"
 #include "random_string.h"
+#include "test.h"
 
 #ifdef __TURBOC__
  #pragma warn -cln
@@ -174,6 +175,10 @@ DWORD crc32buf(char *buf, size_t len)
 
 const BYTE data_crc[4096] = RANDOM_STRING;
 
+__uint32_t crc_res;
 void do_crc() {
-      crc32buf(data_crc, 4096);
+      crc_res = crc32buf(data_crc, 4096);
+      if (crc_res != 2990082009) {
+            Incorrect_Result();
+      }
 }

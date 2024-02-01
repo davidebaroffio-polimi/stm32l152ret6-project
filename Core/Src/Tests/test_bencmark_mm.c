@@ -3,6 +3,7 @@
 /* matmult.c */
 /* was mm.c! */
 #include "test_benchmark.h"
+#include "test.h"
 
 /*----------------------------------------------------------------------*
  * To make this program compile under our assumed embedded environment,
@@ -45,7 +46,7 @@ matrix ArrayA, ArrayB, ResultArray;
 void Multiply(matrix A, matrix B, matrix Res);
 void InitSeed(void);
 void Test(matrix A, matrix B, matrix Res);
-void Initialize(matrix Array);
+void Initialize(matrix Array, int num);
 int RandomInteger(void);
 #endif
 void mm_init()
@@ -72,6 +73,7 @@ void InitSeed(void)
   Seed = 0;
 }
 
+const int mm_res[UPPERLIMIT][UPPERLIMIT] = {{285, 375, 465, 555, 645, 735, 825, 915, 1005, 1095}, {330, 440, 550, 660, 770, 880, 990, 1100, 1210, 1320}, {375, 505, 635, 765, 895, 1025, 1155, 1285, 1415, 1545}, {420, 570, 720, 870, 1020, 1170, 1320, 1470, 1620, 1770}, {465, 635, 805, 975, 1145, 1315, 1485, 1655, 1825, 1995}, {510, 700, 890, 1080, 1270, 1460, 1650, 1840, 2030, 2220}, {555, 765, 975, 1185, 1395, 1605, 1815, 2025, 2235, 2445}, {600, 830, 1060, 1290, 1520, 1750, 1980, 2210, 2440, 2670}, {645, 895, 1145, 1395, 1645, 1895, 2145, 2395, 2645, 2895}, {690, 960, 1230, 1500, 1770, 2040, 2310, 2580, 2850, 3120}};
 
 void Test(matrix A, matrix B, matrix Res)
 /*
@@ -84,8 +86,8 @@ void Test(matrix A, matrix B, matrix Res)
    float TotalTime;
 #endif
 
-   Initialize(A);
-   Initialize(B);
+   Initialize(A, 1);
+   Initialize(B, 2);
 
    /* ***UPPSALA WCET***: don't print or time */
 #ifndef UPPSALAWCET
@@ -93,6 +95,14 @@ void Test(matrix A, matrix B, matrix Res)
 #endif
 
    Multiply(A, B, Res);
+
+   for (int i=0; i<UPPERLIMIT; i++) {
+      for (int j=0; j<UPPERLIMIT; j++) {
+         if (Res[i][j] != mm_res[i][j]) {
+            Incorrect_Result();
+         }
+      }
+   }
 
    /* ***UPPSALA WCET***: don't print or time */
 #ifndef UPPSALAWCET
@@ -104,7 +114,7 @@ void Test(matrix A, matrix B, matrix Res)
 }
 
 
-void Initialize(matrix Array)
+void Initialize(matrix Array, int num)
 /*
  * Intializes the given array with random integers.
  */
@@ -113,7 +123,7 @@ void Initialize(matrix Array)
 
    for (OuterIndex = 0; OuterIndex < UPPERLIMIT; OuterIndex++)
       for (InnerIndex = 0; InnerIndex < UPPERLIMIT; InnerIndex++)
-         Array[OuterIndex][InnerIndex] = RandomInteger();
+         Array[OuterIndex][InnerIndex] = OuterIndex + InnerIndex * (num);
 }
 
 
