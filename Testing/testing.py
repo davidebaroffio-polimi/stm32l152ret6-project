@@ -22,7 +22,7 @@ class SignalHandler(object):
 #cmd_stlink = "/opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.2/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
 
 # works on my pc
-cmd_stlink = "/opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.0.400.202209281104/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.11.0/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.0.500.202209151145/tools/bin -m 0 -k"
+cmd_stlink = "/opt/st/stm32cubeide_1.15.1/plugins/com.st.stm32cube.ide.mcu.externaltools.stlink-gdb-server.linux64_2.1.300.202403291623/tools/bin/ST-LINK_gdbserver -p 61234 -l 1 -d -s -cp /opt/st/stm32cubeide_1.15.1/plugins/com.st.stm32cube.ide.mcu.externaltools.cubeprogrammer.linux64_2.1.201.202404072231/tools/bin -m 0 -k"
 
 cmd_gdb = "gdb-multiarch"
 
@@ -47,6 +47,7 @@ original_pid = os.getpid()
 
 def handler(signum, frame):
     save_data()
+    exit(0)
 
 def read_writable_address_size(elffile):
     writable_size = 0
@@ -56,9 +57,10 @@ def read_writable_address_size(elffile):
     return writable_size
 
 def save_data():
+    global data
     if os.getpid() == original_pid:
         end = time.time()
-        print("Test lasted for {:.3f} seconds".format(end-begin))
+        #print("Test lasted for {:.3f} seconds".format(end-begin))
 
         already_exists = os.path.exists('faults_'+scope+'.csv')
         
@@ -66,8 +68,9 @@ def save_data():
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             if already_exists == False:
                 writer.writeheader()
-            writer.writerows(data)
-    exit(0)
+            if len(data) > 0:
+                writer.writerows(data)
+    data = []
 
 def write(process, bytestring):
     #print("Executing: ", bytestring)
@@ -109,7 +112,6 @@ def read(process, pattern, timeout = 2.0, debug=False):
 def main():
     faults = 0
     attempt = 0
-    #for attempt in range(0, num_attempts):
     while True:
         if faults*2 >= num_effective_faults and data[-1]['code'] == 0:
             break
@@ -254,7 +256,7 @@ def main():
                     pass
             except psutil.NoSuchProcess:
                 pass
-    save_data()
+            save_data()
 
 if __name__ == "__main__":
     try:
@@ -280,9 +282,6 @@ if __name__ == "__main__":
         print("ERROR - Unable to read file", elffilename)
         print("Usage: python3 testing.py [registers|memory] <elf_filename>")
         exit(0)
-        
-    if scope == 'memory':
-        num_attempts = num_attempts*2
 
     signal.signal(signal.SIGCHLD, signal.SIG_IGN)
     signal.signal(signal.SIGINT, handler)

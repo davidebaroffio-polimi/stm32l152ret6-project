@@ -30,6 +30,11 @@
 #include <sys/time.h>
 #include <sys/times.h>
 
+/* Errno support */
+int errno;
+int *__errno(void) {
+    return &errno;
+}
 
 /* Variables */
 extern int __io_putchar(int ch) __attribute__((weak));

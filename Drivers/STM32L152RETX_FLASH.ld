@@ -50,6 +50,7 @@ MEMORY
 
 /* Highest address of the user mode stack */
 _estack = ORIGIN(RAM) + LENGTH(RAM); /* end of "RAM" Ram type memory */
+__stack = _estack;
 
 _Min_Heap_Size = 0x200 ; /* required amount of heap */
 _Min_Stack_Size = 0x400 ; /* required amount of stack */
@@ -152,6 +153,10 @@ SECTIONS
 
   } >RAM AT> FLASH
 
+  __data_start = _sdata;
+  __data_source = LOADADDR(.data);
+  __data_size = _edata - _sdata;
+
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);
   .bss :
@@ -168,6 +173,9 @@ SECTIONS
     __bss_end__ = _ebss;
   } >RAM
 
+  __bss_start = _sbss;
+  __bss_size = _ebss - _sbss;
+
   /* User_heap_stack section, used to check that there is enough "RAM" Ram  type memory left */
   ._user_heap_stack (NOLOAD):
   {
@@ -178,6 +186,14 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
+
+  /* Heap boundaries expected by picolibc */
+  __heap_start = _end;
+  __heap_end = _estack - _Min_Stack_Size;   /* top of heap = just below stack */
+
+  /* TLS symbols – no actual TLS used, just to satisfy linker */
+  __tls_base = _end;                        /* dummy location */
+  __arm32_tls_tcb_offset = 0;               /* offset of TCB in TLS block */
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :
